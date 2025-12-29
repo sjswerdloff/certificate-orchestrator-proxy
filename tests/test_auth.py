@@ -64,9 +64,11 @@ def ca_certificate(ca_key: rsa.RSAPrivateKey) -> x509.Certificate:
     """Self-signed CA certificate for trust anchor."""
     from datetime import UTC, datetime, timedelta
 
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
+        ],
+    )
 
     return (
         x509.CertificateBuilder()
@@ -90,9 +92,11 @@ def client_certificate(
     from datetime import UTC, datetime, timedelta
 
     client_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Test Client"),
-    ])
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Test Client"),
+        ],
+    )
 
     return (
         x509.CertificateBuilder()
@@ -113,9 +117,11 @@ def untrusted_certificate() -> x509.Certificate:
     from datetime import UTC, datetime, timedelta
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Untrusted"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Untrusted"),
+        ],
+    )
 
     return (
         x509.CertificateBuilder()

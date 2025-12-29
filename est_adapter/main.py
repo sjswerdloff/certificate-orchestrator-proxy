@@ -123,7 +123,7 @@ def main() -> None:
         uvicorn_config["ssl_certfile"] = str(settings.server.tls.cert_file)
         uvicorn_config["ssl_keyfile"] = str(settings.server.tls.key_file)
 
-    uvicorn.run(**uvicorn_config)  # type: ignore[arg-type]
+    uvicorn.run(**uvicorn_config)
 
 
 if __name__ == "__main__":

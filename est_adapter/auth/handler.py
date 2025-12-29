@@ -168,9 +168,7 @@ class ClientCertAuthHandler:
 
         # Verify certificate was issued by a trusted CA
         issuer = client_cert.issuer
-        trusted = any(
-            issuer == anchor.subject for anchor in self._trust_anchors
-        )
+        trusted = any(issuer == anchor.subject for anchor in self._trust_anchors)
 
         if not trusted:
             log_auth_attempt(

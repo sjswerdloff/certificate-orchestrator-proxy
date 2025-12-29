@@ -43,10 +43,7 @@ def clear_correlation_id() -> None:
 
 
 # Structured format for audit logs
-_AUDIT_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss.SSS} [{level}] "
-    "[{extra[correlation_id]}] <{extra[event]}> {message} | {extra}"
-)
+_AUDIT_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} [{level}] [{extra[correlation_id]}] <{extra[event]}> {message} | {extra}"
 
 
 def configure_audit_logger(config: AuditConfig) -> None:
