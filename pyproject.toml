@@ -48,7 +48,7 @@ dev = [
 ]
 
 [project.scripts]
-est-adapter = "est_adapter.main:run"
+est-adapter = "est_adapter.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["est_adapter"]
