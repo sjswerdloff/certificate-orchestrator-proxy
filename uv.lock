@@ -404,6 +404,7 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "pytest-json-report" },
 ]
 
@@ -429,7 +430,10 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest-json-report", specifier = ">=1.5.0" }]
+dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest-json-report", specifier = ">=1.5.0" },
+]
 
 [[package]]
 name = "fastapi"
