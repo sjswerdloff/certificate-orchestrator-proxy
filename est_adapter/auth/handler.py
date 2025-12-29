@@ -6,12 +6,13 @@ Supports HTTP Basic authentication and client certificate authentication.
 from __future__ import annotations
 
 import base64
-import hashlib
-import secrets
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
+import bcrypt
 from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 
 from est_adapter.audit.logger import log_auth_attempt
 from est_adapter.config import AuthConfig, AuthMethod
@@ -94,8 +95,8 @@ class BasicAuthHandler:
         # Look up user
         stored_hash = self._users.get(username)
         if not stored_hash:
-            # Timing-safe comparison even for non-existent users
-            _constant_time_compare("dummy", "dummy")
+            # Perform dummy bcrypt check to prevent timing attacks
+            _verify_password("dummy", "$2b$12$" + "0" * 53)
             log_auth_attempt(
                 method="basic",
                 success=False,
@@ -104,9 +105,8 @@ class BasicAuthHandler:
             )
             return AuthResult.failure("basic")
 
-        # Verify password hash
-        computed_hash = _hash_password(password)
-        if not _constant_time_compare(computed_hash, stored_hash):
+        # Verify password using bcrypt (timing-safe by design)
+        if not _verify_password(password, stored_hash):
             log_auth_attempt(
                 method="basic",
                 success=False,
@@ -149,6 +149,10 @@ class ClientCertAuthHandler:
     ) -> AuthResult:
         """Authenticate using client certificate.
 
+        Performs cryptographic verification including:
+        - Signature verification against trusted CA public key
+        - Validity period checking (not before/not after)
+
         Args:
             client_cert: The client's X.509 certificate.
 
@@ -166,16 +170,47 @@ class ClientCertAuthHandler:
         # Extract subject for identification
         subject = client_cert.subject.rfc4514_string()
 
-        # Verify certificate was issued by a trusted CA
-        issuer = client_cert.issuer
-        trusted = any(issuer == anchor.subject for anchor in self._trust_anchors)
-
-        if not trusted:
+        # Check certificate validity period
+        now = datetime.now(UTC)
+        if now < client_cert.not_valid_before_utc:
             log_auth_attempt(
                 method="client_cert",
                 success=False,
                 client_cert_subject=subject,
-                reason="untrusted issuer",
+                reason="certificate not yet valid",
+            )
+            return AuthResult.failure("client_cert")
+
+        if now > client_cert.not_valid_after_utc:
+            log_auth_attempt(
+                method="client_cert",
+                success=False,
+                client_cert_subject=subject,
+                reason="certificate expired",
+            )
+            return AuthResult.failure("client_cert")
+
+        # Find matching trust anchor and verify signature
+        issuer = client_cert.issuer
+        verified = False
+
+        for anchor in self._trust_anchors:
+            if issuer == anchor.subject:
+                # Found potential issuer - verify signature cryptographically
+                try:
+                    _verify_certificate_signature(client_cert, anchor)
+                    verified = True
+                    break
+                except Exception:  # noqa: S112 - expected: trying multiple anchors
+                    # Signature doesn't match this anchor, try next
+                    continue
+
+        if not verified:
+            log_auth_attempt(
+                method="client_cert",
+                success=False,
+                client_cert_subject=subject,
+                reason="untrusted issuer or invalid signature",
             )
             return AuthResult.failure("client_cert")
 
@@ -263,31 +298,54 @@ class CombinedAuthHandler:
         raise AuthenticationError(msg)
 
 
-def _hash_password(password: str) -> str:
-    """Hash a password for storage/comparison.
-
-    Uses SHA-256 for simplicity. In production, use bcrypt or Argon2.
-
-    Args:
-        password: Plain text password.
-
-    Returns:
-        Hex-encoded hash.
-    """
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-
-def _constant_time_compare(a: str, b: str) -> bool:
-    """Compare two strings in constant time.
+def _verify_certificate_signature(
+    cert: x509.Certificate,
+    issuer_cert: x509.Certificate,
+) -> None:
+    """Verify certificate signature against issuer's public key.
 
     Args:
-        a: First string.
-        b: Second string.
+        cert: Certificate to verify.
+        issuer_cert: Issuer certificate containing public key.
+
+    Raises:
+        Exception: If signature verification fails.
+    """
+    public_key = issuer_cert.public_key()
+    signature = cert.signature
+    data = cert.tbs_certificate_bytes
+    sig_hash = cert.signature_hash_algorithm
+
+    if sig_hash is None:
+        msg = "Certificate has no signature hash algorithm"
+        raise ValueError(msg)
+
+    if isinstance(public_key, rsa.RSAPublicKey):
+        # RSA verification with PKCS1v15 padding
+        public_key.verify(signature, data, padding.PKCS1v15(), sig_hash)
+    elif isinstance(public_key, ec.EllipticCurvePublicKey):
+        # EC verification with ECDSA
+        public_key.verify(signature, data, ec.ECDSA(sig_hash))
+    else:
+        msg = f"Unsupported public key type: {type(public_key)}"
+        raise TypeError(msg)
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verify a password against a stored bcrypt hash.
+
+    Args:
+        password: Plain text password to verify.
+        stored_hash: bcrypt hash from configuration.
 
     Returns:
-        True if equal, False otherwise.
+        True if password matches, False otherwise.
     """
-    return secrets.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+    try:
+        return bool(bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")))
+    except (ValueError, TypeError):
+        # Invalid hash format - fail securely
+        return False
 
 
 def _load_certificates(path: Path) -> list[x509.Certificate]:
@@ -331,16 +389,19 @@ def _load_certificates(path: Path) -> list[x509.Certificate]:
     return certificates
 
 
-def hash_password_for_config(password: str) -> str:
+def hash_password_for_config(password: str, rounds: int = 12) -> str:
     """Hash a password for use in configuration file.
 
     This is a utility function for administrators to generate
-    password hashes for the config file.
+    password hashes for the config file. Uses bcrypt with configurable
+    work factor.
 
     Args:
         password: Plain text password.
+        rounds: bcrypt work factor (default 12, higher = more secure but slower).
 
     Returns:
-        Hex-encoded hash suitable for config file.
+        bcrypt hash suitable for config file.
     """
-    return _hash_password(password)
+    salt = bcrypt.gensalt(rounds=rounds)
+    return str(bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8"))

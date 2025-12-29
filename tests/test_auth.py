@@ -314,18 +314,22 @@ class TestPasswordHashing:
     """Tests for password hashing utility."""
 
     def test_hash_password(self) -> None:
-        """Hash password returns hex string."""
+        """Hash password returns bcrypt string."""
         result = hash_password_for_config("test123")
 
         assert isinstance(result, str)
-        assert len(result) == 64  # SHA-256 hex digest
+        assert result.startswith("$2b$")  # bcrypt identifier
+        assert len(result) == 60  # bcrypt hash length
 
-    def test_same_password_same_hash(self) -> None:
-        """Same password produces same hash."""
-        hash1 = hash_password_for_config("test123")
-        hash2 = hash_password_for_config("test123")
+    def test_password_verifies(self) -> None:
+        """Password verifies against its hash."""
+        import bcrypt
 
-        assert hash1 == hash2
+        test_password = "test123"  # noqa: S105 - test credential
+        hashed = hash_password_for_config(test_password)
+
+        # bcrypt.checkpw verifies password against hash
+        assert bcrypt.checkpw(test_password.encode("utf-8"), hashed.encode("utf-8"))
 
     def test_different_password_different_hash(self) -> None:
         """Different passwords produce different hashes."""

@@ -118,7 +118,7 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*"]
+module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*", "bcrypt.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -148,5 +148,6 @@ exclude_lines = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest-json-report>=1.5.0",
 ]
