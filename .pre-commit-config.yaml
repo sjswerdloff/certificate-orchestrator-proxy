@@ -16,5 +16,6 @@ repos:
           - fastapi
           - cryptography
           - pytest
-        args: [--strict, --ignore-missing-imports]
+          - uvicorn
+        args: [--strict]
         exclude: ^tests/
