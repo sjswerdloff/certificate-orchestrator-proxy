@@ -1,0 +1,48 @@
+# EST Adapter Configuration
+# Copy to config.yaml and modify for your environment
+
+server:
+  host: "0.0.0.0"
+  port: 8443
+  tls:
+    cert_file: /path/to/server.crt
+    key_file: /path/to/server.key
+
+ca:
+  # Mode: "auto_generate" creates CA on first run, "provided" uses existing CA
+  mode: auto_generate
+  auto_generate:
+    subject: "CN=EST Adapter CA,O=Healthcare Organization"
+    validity_days: 3650
+    storage_path: ./ca_data/
+  provided:
+    cert_file: /path/to/ca.crt
+    key_file: /path/to/ca.key
+
+auth:
+  # Method: "basic", "client_cert", or "both"
+  method: basic
+  basic:
+    users:
+      - username: device1
+        # Generate with: python -c "import bcrypt; print(bcrypt.hashpw(b'password', bcrypt.gensalt()).decode())"
+        password_hash: "$2b$12$..."
+  client_cert:
+    trust_anchors: /path/to/trust.pem
+
+validation:
+  min_key_size: 2048
+  allowed_key_types:
+    - RSA
+    - EC
+  allowed_ec_curves:
+    - secp256r1
+    - secp384r1
+  max_validity_days: 365
+  required_subject_fields:
+    - CN
+  subject_cn_pattern: "^[a-zA-Z0-9._-]+$"
+
+audit:
+  log_file: ./logs/audit.log
+  log_level: INFO

@@ -1,0 +1,1 @@
+"""EST Adapter test suite."""

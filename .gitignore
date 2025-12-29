@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking
+.mypy_cache/
+
+# Secrets and generated data - NEVER COMMIT
+ca_data/
+*.key
+*.pem
+config.yaml
+
+# Logs
+logs/
+*.log
+
+# Development artifacts
+.ruff_cache/
+
+# Internal working notes
+EST_Adapter_Handoff_*.md
+EST_Adapter_Research.md
+EST_Adapter_Phase1_Design.md
+Prompt.md
