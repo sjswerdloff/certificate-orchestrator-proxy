@@ -48,7 +48,7 @@ def basic_auth_config(test_password_hash: str) -> AuthConfig:
     return AuthConfig(
         method=AuthMethod.BASIC,
         basic=BasicAuthConfig(
-            users=[BasicAuthUser(username="testuser", password_hash=test_password_hash)]
+            users=[BasicAuthUser(username="testuser", password_hash=test_password_hash)],
         ),
     )
 

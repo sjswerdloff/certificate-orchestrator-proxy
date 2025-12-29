@@ -109,7 +109,7 @@ def test_app(settings: Settings) -> Generator[FastAPI, None, None]:
     from est_adapter.main import create_app
 
     with patch("est_adapter.main.log_startup"), patch("est_adapter.main.log_shutdown"), patch(
-        "est_adapter.ca.backend.log_ca_initialized"
+        "est_adapter.ca.backend.log_ca_initialized",
     ):
         app = create_app(settings)
         yield app
@@ -200,7 +200,7 @@ class TestSimpleEnroll:
     ) -> None:
         """Valid CSR with auth returns issued certificate."""
         with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
+            "est_adapter.routes.est.log_csr_validation",
         ), patch("est_adapter.ca.backend.log_certificate_issued"):
             response = client.post(
                 "/.well-known/est/simpleenroll",
@@ -222,7 +222,7 @@ class TestSimpleEnroll:
     ) -> None:
         """DER-encoded CSR is accepted."""
         with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
+            "est_adapter.routes.est.log_csr_validation",
         ), patch("est_adapter.ca.backend.log_certificate_issued"):
             response = client.post(
                 "/.well-known/est/simpleenroll",
@@ -293,7 +293,7 @@ class TestSimpleEnroll:
         csr_pem = csr.public_bytes(Encoding.PEM)
 
         with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
+            "est_adapter.routes.est.log_csr_validation",
         ):
             response = client.post(
                 "/.well-known/est/simpleenroll",
@@ -318,7 +318,7 @@ class TestSimpleReenroll:
     ) -> None:
         """Valid CSR with auth returns issued certificate."""
         with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
+            "est_adapter.routes.est.log_csr_validation",
         ), patch("est_adapter.ca.backend.log_certificate_issued"):
             response = client.post(
                 "/.well-known/est/simplereenroll",

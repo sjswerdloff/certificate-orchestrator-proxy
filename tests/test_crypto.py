@@ -63,7 +63,7 @@ def rsa_csr(rsa_key: rsa.RSAPrivateKey) -> x509.CertificateSigningRequest:
             x509.Name([
                 x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
                 x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-            ])
+            ]),
         )
         .sign(rsa_key, hashes.SHA256())
     )
@@ -77,7 +77,7 @@ def ec_csr(ec_key: ec.EllipticCurvePrivateKey) -> x509.CertificateSigningRequest
         .subject_name(
             x509.Name([
                 x509.NameAttribute(NameOID.COMMON_NAME, "ec-test.example.com"),
-            ])
+            ]),
         )
         .sign(ec_key, hashes.SHA256())
     )
@@ -184,7 +184,7 @@ class TestCSRSignatureVerification:
     """Tests for CSR signature verification."""
 
     def test_verify_valid_signature(
-        self, rsa_csr: x509.CertificateSigningRequest
+        self, rsa_csr: x509.CertificateSigningRequest,
     ) -> None:
         """Valid CSR signature verifies successfully."""
         csr_info = parse_csr(rsa_csr.public_bytes(Encoding.PEM))
@@ -194,7 +194,7 @@ class TestCSRSignatureVerification:
         assert result is True
 
     def test_verify_ec_signature(
-        self, ec_csr: x509.CertificateSigningRequest
+        self, ec_csr: x509.CertificateSigningRequest,
     ) -> None:
         """EC CSR signature verifies successfully."""
         csr_info = parse_csr(ec_csr.public_bytes(Encoding.PEM))

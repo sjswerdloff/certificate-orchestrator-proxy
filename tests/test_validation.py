@@ -47,7 +47,7 @@ def rsa_2048_csr() -> x509.CertificateSigningRequest:
             x509.Name([
                 x509.NameAttribute(NameOID.COMMON_NAME, "test.example.com"),
                 x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-            ])
+            ]),
         )
         .sign(key, hashes.SHA256())
     )
@@ -60,7 +60,7 @@ def rsa_1024_csr() -> x509.CertificateSigningRequest:
     return (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
-            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "small-key")])
+            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "small-key")]),
         )
         .sign(key, hashes.SHA256())
     )
@@ -73,7 +73,7 @@ def ec_p256_csr() -> x509.CertificateSigningRequest:
     return (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
-            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ec-test")])
+            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ec-test")]),
         )
         .sign(key, hashes.SHA256())
     )
@@ -86,7 +86,7 @@ def ec_p384_csr() -> x509.CertificateSigningRequest:
     return (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
-            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ec-384")])
+            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "ec-384")]),
         )
         .sign(key, hashes.SHA256())
     )
@@ -319,7 +319,7 @@ class TestSubjectFieldValidation:
                 x509.Name([
                     x509.NameAttribute(NameOID.COMMON_NAME, "test"),
                     x509.NameAttribute(NameOID.EMAIL_ADDRESS, "test@example.com"),
-                ])
+                ]),
             )
             .sign(key, hashes.SHA256())
         )
@@ -357,8 +357,8 @@ class TestCNPatternValidation:
             x509.CertificateSigningRequestBuilder()
             .subject_name(
                 x509.Name([
-                    x509.NameAttribute(NameOID.COMMON_NAME, "INVALID_NAME!")
-                ])
+                    x509.NameAttribute(NameOID.COMMON_NAME, "INVALID_NAME!"),
+                ]),
             )
             .sign(key, hashes.SHA256())
         )
@@ -399,7 +399,7 @@ class TestFullValidation:
                 x509.Name([
                     x509.NameAttribute(NameOID.COMMON_NAME, "INVALID!"),
                     x509.NameAttribute(NameOID.EMAIL_ADDRESS, "bad@example.com"),
-                ])
+                ]),
             )
             .sign(key, hashes.SHA256())
         )
