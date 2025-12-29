@@ -82,18 +82,29 @@ python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt())
 
 ## Development
 
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+
 ```bash
+# Set up development environment
+uv sync --dev
+
 # Install pre-commit hooks
-pre-commit install
+uv run pre-commit install
 
 # Run tests
-pytest
+uv run python -m pytest
+
+# Run tests with JSON report (for CI-style output)
+uv run python -m pytest --json-report --json-report-file=results.json
 
 # Type checking
-mypy est_adapter/
+uv run python -m mypy est_adapter/
 
 # Linting
-ruff check est_adapter/ tests/
+uv run ruff check est_adapter/ tests/
+
+# Format code
+uv run ruff format est_adapter/ tests/
 ```
 
 ## EST Endpoints
