@@ -41,9 +41,11 @@ def ca_key() -> rsa.RSAPrivateKey:
 @pytest.fixture
 def ca_certificate(ca_key: rsa.RSAPrivateKey) -> x509.Certificate:
     """Self-signed CA certificate for testing."""
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
+        ],
+    )
 
     ski = x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key())
 
@@ -108,8 +110,12 @@ def test_app(settings: Settings) -> Generator[FastAPI, None, None]:
     """FastAPI app created via main.create_app with test settings."""
     from est_adapter.main import create_app
 
-    with patch("est_adapter.main.log_startup"), patch("est_adapter.main.log_shutdown"), patch(
-        "est_adapter.ca.backend.log_ca_initialized"
+    with (
+        patch("est_adapter.main.log_startup"),
+        patch("est_adapter.main.log_shutdown"),
+        patch(
+            "est_adapter.ca.backend.log_ca_initialized",
+        ),
     ):
         app = create_app(settings)
         yield app
@@ -127,9 +133,13 @@ def valid_csr_pem() -> bytes:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     csr = (
         x509.CertificateSigningRequestBuilder()
-        .subject_name(x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
-        ]))
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
+                ],
+            ),
+        )
         .sign(key, hashes.SHA256())
     )
     return csr.public_bytes(Encoding.PEM)
@@ -141,9 +151,13 @@ def valid_csr_der() -> bytes:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     csr = (
         x509.CertificateSigningRequestBuilder()
-        .subject_name(x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
-        ]))
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
+                ],
+            ),
+        )
         .sign(key, hashes.SHA256())
     )
     return csr.public_bytes(Encoding.DER)
@@ -199,9 +213,13 @@ class TestSimpleEnroll:
         auth_header: str,
     ) -> None:
         """Valid CSR with auth returns issued certificate."""
-        with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
-        ), patch("est_adapter.ca.backend.log_certificate_issued"):
+        with (
+            patch("est_adapter.routes.est.log_csr_received"),
+            patch(
+                "est_adapter.routes.est.log_csr_validation",
+            ),
+            patch("est_adapter.ca.backend.log_certificate_issued"),
+        ):
             response = client.post(
                 "/.well-known/est/simpleenroll",
                 content=valid_csr_pem,
@@ -221,9 +239,13 @@ class TestSimpleEnroll:
         auth_header: str,
     ) -> None:
         """DER-encoded CSR is accepted."""
-        with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
-        ), patch("est_adapter.ca.backend.log_certificate_issued"):
+        with (
+            patch("est_adapter.routes.est.log_csr_received"),
+            patch(
+                "est_adapter.routes.est.log_csr_validation",
+            ),
+            patch("est_adapter.ca.backend.log_certificate_issued"),
+        ):
             response = client.post(
                 "/.well-known/est/simpleenroll",
                 content=valid_csr_der,
@@ -285,15 +307,22 @@ class TestSimpleEnroll:
         key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
         csr = (
             x509.CertificateSigningRequestBuilder()
-            .subject_name(x509.Name([
-                x509.NameAttribute(NameOID.COMMON_NAME, "small-key"),
-            ]))
+            .subject_name(
+                x509.Name(
+                    [
+                        x509.NameAttribute(NameOID.COMMON_NAME, "small-key"),
+                    ],
+                ),
+            )
             .sign(key, hashes.SHA256())
         )
         csr_pem = csr.public_bytes(Encoding.PEM)
 
-        with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
+        with (
+            patch("est_adapter.routes.est.log_csr_received"),
+            patch(
+                "est_adapter.routes.est.log_csr_validation",
+            ),
         ):
             response = client.post(
                 "/.well-known/est/simpleenroll",
@@ -317,9 +346,13 @@ class TestSimpleReenroll:
         auth_header: str,
     ) -> None:
         """Valid CSR with auth returns issued certificate."""
-        with patch("est_adapter.routes.est.log_csr_received"), patch(
-            "est_adapter.routes.est.log_csr_validation"
-        ), patch("est_adapter.ca.backend.log_certificate_issued"):
+        with (
+            patch("est_adapter.routes.est.log_csr_received"),
+            patch(
+                "est_adapter.routes.est.log_csr_validation",
+            ),
+            patch("est_adapter.ca.backend.log_certificate_issued"),
+        ):
             response = client.post(
                 "/.well-known/est/simplereenroll",
                 content=valid_csr_pem,

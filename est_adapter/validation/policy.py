@@ -106,10 +106,7 @@ def _validate_key_type(csr_info: CSRInfo, config: ValidationConfig) -> str | Non
 def _validate_key_size(csr_info: CSRInfo, config: ValidationConfig) -> str | None:
     """Validate key size meets minimum requirements."""
     if csr_info.key_size < config.min_key_size:
-        return (
-            f"Key size {csr_info.key_size} bits below minimum "
-            f"{config.min_key_size} bits"
-        )
+        return f"Key size {csr_info.key_size} bits below minimum {config.min_key_size} bits"
     return None
 
 
@@ -165,9 +162,6 @@ def _validate_cn_pattern(csr_info: CSRInfo, config: ValidationConfig) -> str | N
 
     pattern = re.compile(config.subject_cn_pattern)
     if not pattern.match(csr_info.common_name):
-        return (
-            f"Common Name '{csr_info.common_name}' does not match "
-            f"required pattern: {config.subject_cn_pattern}"
-        )
+        return f"Common Name '{csr_info.common_name}' does not match required pattern: {config.subject_cn_pattern}"
 
     return None

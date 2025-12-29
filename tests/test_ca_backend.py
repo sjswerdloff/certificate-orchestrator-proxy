@@ -46,10 +46,12 @@ def ca_key() -> rsa.RSAPrivateKey:
 @pytest.fixture
 def ca_certificate(ca_key: rsa.RSAPrivateKey) -> x509.Certificate:
     """Self-signed CA certificate for testing."""
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
-    ])
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "Test CA"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Test Org"),
+        ],
+    )
 
     # SubjectKeyIdentifier is required for signing certificates
     ski = x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key())
@@ -72,15 +74,13 @@ def ca_certificate(ca_key: rsa.RSAPrivateKey) -> x509.Certificate:
 def client_csr() -> x509.CertificateSigningRequest:
     """Client CSR for testing certificate signing."""
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
-    ])
-
-    return (
-        x509.CertificateSigningRequestBuilder()
-        .subject_name(subject)
-        .sign(key, hashes.SHA256())
+    subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "client.example.com"),
+        ],
     )
+
+    return x509.CertificateSigningRequestBuilder().subject_name(subject).sign(key, hashes.SHA256())
 
 
 @pytest.fixture

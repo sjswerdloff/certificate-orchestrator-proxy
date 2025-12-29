@@ -19,9 +19,13 @@ from est_adapter.audit.logger import (
     log_csr_validation,
     set_correlation_id,
 )
-from est_adapter.auth.handler import CombinedAuthHandler
-from est_adapter.ca.backend import SelfSignedCABackend
-from est_adapter.config import Settings
+
+# FastAPI requires these at runtime for dependency injection and OpenAPI schema.
+# With `from __future__ import annotations`, FastAPI uses get_type_hints() to
+# resolve type strings. Moving these to TYPE_CHECKING would cause NameError.
+from est_adapter.auth.handler import CombinedAuthHandler  # noqa: TC001
+from est_adapter.ca.backend import SelfSignedCABackend  # noqa: TC001
+from est_adapter.config import Settings  # noqa: TC001
 from est_adapter.crypto.cert import encode_pkcs7_certs_base64
 from est_adapter.crypto.csr import parse_csr
 from est_adapter.exceptions import AuthenticationError, CSRValidationError

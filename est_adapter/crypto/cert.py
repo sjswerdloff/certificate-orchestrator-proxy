@@ -79,10 +79,12 @@ def generate_certificate(
 
     # Extended key usage for TLS client/server
     builder = builder.add_extension(
-        x509.ExtendedKeyUsage([
-            x509.oid.ExtendedKeyUsageOID.SERVER_AUTH,
-            x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH,
-        ]),
+        x509.ExtendedKeyUsage(
+            [
+                x509.oid.ExtendedKeyUsageOID.SERVER_AUTH,
+                x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH,
+            ],
+        ),
         critical=False,
     )
 

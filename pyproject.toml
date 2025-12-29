@@ -41,8 +41,8 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
     "httpx>=0.28.0",
-    "ruff>=0.8.0",
-    "mypy>=1.13.0",
+    "ruff>=0.14.10",
+    "mypy>=1.19.1",
     "pre-commit>=4.0.0",
     "types-PyYAML>=6.0.0",
 ]
@@ -93,12 +93,20 @@ select = [
     "RUF",    # Ruff-specific
 ]
 ignore = [
-    "S101",   # assert statements OK in tests
+    "S101",    # assert statements OK in tests
     "PLR0913", # too many arguments - sometimes unavoidable in APIs
+    "COM812",  # trailing commas - conflicts with ruff format
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "ARG001", "PLR2004"]
+"tests/*" = [
+    "S101",    # assert statements OK in tests
+    "ARG001",  # unused arguments OK in test fixtures
+    "PLR2004", # magic values OK in tests
+    "PLC0415", # import inside function - needed for test isolation with mocking
+    "S505",    # weak crypto keys intentional in tests for speed
+    "TCH",     # type-checking imports less critical in tests
+]
 
 [tool.mypy]
 python_version = "3.11"
@@ -110,8 +118,12 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["uvicorn.*", "loguru.*"]
+module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

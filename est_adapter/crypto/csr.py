@@ -62,11 +62,7 @@ def parse_csr(csr_data: bytes | str) -> CSRInfo:
         try:
             csr_data = csr_data.strip()
             # PEM stays as encoded string, base64 DER gets decoded
-            csr_data = (
-                csr_data.encode("utf-8")
-                if csr_data.startswith("-----BEGIN")
-                else base64.b64decode(csr_data)
-            )
+            csr_data = csr_data.encode("utf-8") if csr_data.startswith("-----BEGIN") else base64.b64decode(csr_data)
         except Exception as e:
             raise CSRValidationError.invalid_format(reason=str(e)) from e
 
