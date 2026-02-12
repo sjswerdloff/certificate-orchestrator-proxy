@@ -28,14 +28,15 @@ Testing usage::
 """
 
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import AsyncAdaptedQueuePool, StaticPool
 
 from est_adapter.admin.models.base import Base
 
-_engines: dict = {}
-_session_makers: dict = {}
+_engines: dict[str, Any] = {}
+_session_makers: dict[str, Any] = {}
 
 
 def _pool_class_for_url(database_url: str) -> type:

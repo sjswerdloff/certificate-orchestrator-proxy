@@ -19,9 +19,13 @@ repos:
         additional_dependencies:
           - types-PyYAML
           - pydantic
+          - pydantic-settings
           - fastapi
           - cryptography
           - pytest
           - uvicorn
+          - sqlalchemy
+          - aiosqlite
+          - greenlet
         args: [--strict]
         exclude: ^tests/

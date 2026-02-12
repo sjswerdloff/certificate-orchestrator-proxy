@@ -44,6 +44,7 @@ async def health_check(
             status="healthy",
             timestamp=datetime.now(UTC),
             version="0.1.0",
+            uptime_seconds=None,
             database="connected",
             ca_backends=ca_backends_count,
             est_profiles=est_profiles_count,

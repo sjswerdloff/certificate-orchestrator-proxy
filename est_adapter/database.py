@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 from sqlalchemy.pool import StaticPool
 
 from est_adapter.admin.models import Base
@@ -17,7 +17,7 @@ _engine = None
 _session_maker = None
 
 
-def get_async_engine(database_url: str = "sqlite+aiosqlite:///:memory:"):
+def get_async_engine(database_url: str = "sqlite+aiosqlite:///:memory:") -> AsyncEngine:
     """Create an async SQLAlchemy engine.
 
     Args:
@@ -37,7 +37,7 @@ def get_async_engine(database_url: str = "sqlite+aiosqlite:///:memory:"):
     return _engine
 
 
-def get_async_session_maker(database_url: str = "sqlite+aiosqlite:///:memory:"):
+def get_async_session_maker(database_url: str = "sqlite+aiosqlite:///:memory:") -> async_sessionmaker[AsyncSession]:
     """Create an async session maker.
 
     Args:
@@ -53,7 +53,7 @@ def get_async_session_maker(database_url: str = "sqlite+aiosqlite:///:memory:"):
     return _session_maker
 
 
-async def get_async_session(database_url: str = "sqlite+aiosqlite:///:memory:"):
+async def get_async_session(database_url: str = "sqlite+aiosqlite:///:memory:") -> AsyncGenerator[AsyncSession, None]:
     """Get an async database session.
 
     Args:
@@ -70,7 +70,7 @@ async def get_async_session(database_url: str = "sqlite+aiosqlite:///:memory:"):
             await session.close()
 
 
-async def init_database(database_url: str = "sqlite+aiosqlite:///:memory:"):
+async def init_database(database_url: str = "sqlite+aiosqlite:///:memory:") -> None:
     """Initialize the database with all tables.
 
     Args:
