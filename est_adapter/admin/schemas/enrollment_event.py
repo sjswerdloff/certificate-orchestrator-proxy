@@ -84,7 +84,6 @@ class EnrollmentEventCreate(EnrollmentEventBase):
     """Schema for creating a new Enrollment Event."""
 
 
-
 class EnrollmentEventResponse(EnrollmentEventBase):
     """Schema for Enrollment Event response."""
 

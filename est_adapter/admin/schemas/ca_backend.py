@@ -53,7 +53,6 @@ class CABackendCreate(CABackendBase):
     """Schema for creating a new CA Backend."""
 
 
-
 class CABackendUpdate(BaseSchema):
     """Schema for updating an existing CA Backend."""
 

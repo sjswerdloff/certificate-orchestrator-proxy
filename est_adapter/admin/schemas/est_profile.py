@@ -59,7 +59,6 @@ class ESTProfileCreate(ESTProfileBase):
     """Schema for creating a new EST Profile."""
 
 
-
 class ESTProfileUpdate(BaseSchema):
     """Schema for updating an existing EST Profile."""
 
