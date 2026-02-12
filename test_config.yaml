@@ -47,6 +47,6 @@ admin:
     host: "0.0.0.0"
   
   database:
-    url: "sqlite+aiosqlite:///:memory:?cache=shared&mode=memory"
+    url: "sqlite+aiosqlite:///:memory:"
     pool_size: 10
     max_overflow: 20

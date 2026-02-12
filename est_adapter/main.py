@@ -19,7 +19,7 @@ from est_adapter.admin.api.est_profiles import router as est_profiles_router
 from est_adapter.admin.api.status import router as status_router
 
 # Admin API imports
-from est_adapter.admin.database import init_database
+from est_adapter.admin.database import close_database, init_database
 from est_adapter.audit.logger import (
     configure_audit_logger,
     log_error,
@@ -78,6 +78,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             print(f"[DEBUG] Database initialized")
 
         yield
+
+        # Dispose database engine on shutdown to release connection pool
+        if settings.admin.enabled and settings.admin.database.url:
+            await close_database(settings.admin.database.url)
         log_shutdown()
 
     app = FastAPI(

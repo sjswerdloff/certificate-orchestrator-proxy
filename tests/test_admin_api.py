@@ -1,60 +1,86 @@
-"""Tests for the admin API endpoints."""
+"""Tests for the admin API endpoints.
 
+Each test gets a fresh in-memory SQLite database via the ``test_client``
+fixture. The fixture calls ``close_all_databases()`` before and after
+each test to clear the module-level engine cache in
+``est_adapter.admin.database``, guaranteeing full isolation.
+
+If you add a new test that creates entities, you do **not** need to
+worry about cleanup - the fixture handles it. Just use ``test_client``
+and write your test as if the database is empty.
+"""
+
+import asyncio
 import os
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from est_adapter.admin.models import Base
-from est_adapter.admin.database import init_database, get_async_session
-from est_adapter.main import create_app
+from est_adapter.admin.database import close_all_databases, get_async_session, init_database
+from est_adapter.admin.dependencies import get_database_session
 from est_adapter.config import Settings
+from est_adapter.main import create_app
+
+# Simple in-memory URL without cache=shared. Combined with StaticPool
+# (selected automatically by init_database for :memory: URLs), this
+# gives each engine its own private database.
+_TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture
-async def async_session() -> AsyncSession:
-    """Create an async session for testing with SQLite in-memory database."""
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-        echo=False,
-    )
+def test_client() -> Generator[TestClient, None, None]:
+    """Create a test client with a fresh, isolated database.
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    Lifecycle:
+        1. Dispose any engines left over from a previous test.
+        2. Initialize a fresh in-memory database and create tables.
+        3. Create the FastAPI app pointing at that database.
+        4. Override the database dependency so all endpoints use
+           the test database (not the URL from config files).
+        5. Yield a TestClient for the test to use.
+        6. Clear overrides and dispose the engine so the next test
+           starts clean.
 
-    async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
-    async with async_session_maker() as session:
-        yield session
-
-
-@pytest.fixture
-def test_client() -> TestClient:
-    """Create a test client for the admin API."""
-    # Set environment variable for test configuration
+    The database is completely empty at the start of every test.
+    """
     os.environ["EST_ADAPTER_CONFIG"] = "test_config.yaml"
 
-    # Create test settings
+    # Ensure no stale engines survive from a previous test
+    asyncio.run(close_all_databases())
+
     settings = Settings(
         admin={
             "enabled": True,
             "api": {"enabled": True, "port": 8081, "host": "0.0.0.0"},
             "web": {"enabled": True, "port": 8501, "host": "0.0.0.0"},
-            "database": {"url": "sqlite+aiosqlite:///:memory:?cache=shared&mode=memory", "pool_size": 10, "max_overflow": 20},
+            "database": {
+                "url": _TEST_DATABASE_URL,
+                "pool_size": 10,
+                "max_overflow": 20,
+            },
         }
     )
-
-    # Manually initialize database before creating the app
-    # This is needed because TestClient doesn't trigger lifespan
-    import asyncio
-    from est_adapter.admin.database import init_database
 
     asyncio.run(init_database(settings.admin.database.url))
 
     app = create_app(settings)
-    return TestClient(app)
+
+    # Override the dependency so endpoints use the test database,
+    # not whatever URL load_config_from_env() returns at request time.
+    async def _test_db_session():
+        async for session in get_async_session(_TEST_DATABASE_URL):
+            yield session
+
+    app.dependency_overrides[get_database_session] = _test_db_session
+
+    with TestClient(app) as client:
+        yield client
+
+    # Teardown: clear overrides and dispose engine to avoid
+    # event-loop-closed warnings from aiosqlite threads
+    app.dependency_overrides.clear()
+    asyncio.run(close_all_databases())
 
 
 class TestCAEndpoints:
