@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import re
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -53,7 +53,7 @@ class CAProvidedConfig(BaseModel):
     key_file: Path
 
 
-class CAMode(str, Enum):
+class CAMode(StrEnum):
     """CA operation mode."""
 
     AUTO_GENERATE = "auto_generate"
@@ -95,7 +95,7 @@ class ClientCertAuthConfig(BaseModel):
     trust_anchors: Path
 
 
-class AuthMethod(str, Enum):
+class AuthMethod(StrEnum):
     """Authentication method."""
 
     BASIC = "basic"
@@ -113,14 +113,14 @@ class AuthConfig(BaseModel):
     client_cert: ClientCertAuthConfig | None = None
 
 
-class KeyType(str, Enum):
+class KeyType(StrEnum):
     """Allowed key types for CSR validation."""
 
     RSA = "RSA"
     EC = "EC"
 
 
-class ECCurve(str, Enum):
+class ECCurve(StrEnum):
     """Allowed elliptic curves for CSR validation."""
 
     SECP256R1 = "secp256r1"
@@ -153,7 +153,7 @@ class ValidationConfig(BaseModel):
         return v
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     """Log levels."""
 
     DEBUG = "DEBUG"
