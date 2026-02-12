@@ -46,3 +46,25 @@ validation:
 audit:
   log_file: ./logs/audit.log
   log_level: INFO
+
+# Admin API and Web UI configuration
+admin:
+  enabled: true
+  
+  api:
+    enabled: true
+    port: 8080
+    host: "0.0.0.0"
+  
+  web:
+    enabled: true
+    port: 8501
+    host: "0.0.0.0"
+  
+  database:
+    # SQLite is recommended for development
+    # Use "sqlite+aiosqlite:///./est_adapter.db" for SQLite
+    # Use "postgresql+asyncpg://user:pass@localhost:5432/est_adapter" for PostgreSQL
+    url: "sqlite+aiosqlite:///./est_adapter.db"
+    pool_size: 10
+    max_overflow: 20

@@ -1,0 +1,52 @@
+server:
+  host: "0.0.0.0"
+  port: 8443
+
+ca:
+  mode: auto_generate
+  auto_generate:
+    subject: "CN=EST Adapter CA,O=Healthcare Organization"
+    validity_days: 3650
+    storage_path: ./ca_data/
+
+auth:
+  method: basic
+  basic:
+    users:
+      - username: device1
+        password_hash: "$2b$12$..."
+
+validation:
+  min_key_size: 2048
+  allowed_key_types:
+    - RSA
+    - EC
+  allowed_ec_curves:
+    - secp256r1
+    - secp384r1
+  max_validity_days: 365
+  required_subject_fields:
+    - CN
+  subject_cn_pattern: "^[a-zA-Z0-9._-]+$"
+
+audit:
+  log_file: ./logs/audit.log
+  log_level: INFO
+
+admin:
+  enabled: true
+  
+  api:
+    enabled: true
+    port: 8081
+    host: "0.0.0.0"
+  
+  web:
+    enabled: true
+    port: 8501
+    host: "0.0.0.0"
+  
+  database:
+    url: "sqlite+aiosqlite:///:memory:?cache=shared&mode=memory"
+    pool_size: 10
+    max_overflow: 20

@@ -171,6 +171,47 @@ class AuditConfig(BaseModel):
     log_level: LogLevel = LogLevel.INFO
 
 
+class AdminAPIConfig(BaseModel):
+    """Admin API configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    port: Annotated[int, Field(ge=1, le=65535)] = 8080
+    host: str = "0.0.0.0"
+
+
+class AdminWebConfig(BaseModel):
+    """Admin Web UI configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    port: Annotated[int, Field(ge=1, le=65535)] = 8501
+    host: str = "0.0.0.0"
+
+
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    url: str | None = None
+    pool_size: int = 10
+    max_overflow: int = 20
+
+
+class AdminConfig(BaseModel):
+    """Admin configuration (API + Web UI)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    api: AdminAPIConfig = AdminAPIConfig()
+    web: AdminWebConfig = AdminWebConfig()
+    database: DatabaseConfig = DatabaseConfig()
+
+
 class Settings(BaseModel):
     """Root configuration model for EST Adapter."""
 
@@ -181,6 +222,7 @@ class Settings(BaseModel):
     auth: AuthConfig = AuthConfig()
     validation: ValidationConfig = ValidationConfig()
     audit: AuditConfig = AuditConfig()
+    admin: AdminConfig = AdminConfig()
 
 
 def load_config(config_path: Path | str) -> Settings:
