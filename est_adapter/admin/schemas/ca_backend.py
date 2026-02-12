@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .common import BaseSchema
 
@@ -52,7 +52,6 @@ class CABackendBase(BaseSchema):
 class CABackendCreate(CABackendBase):
     """Schema for creating a new CA Backend."""
 
-    pass
 
 
 class CABackendUpdate(BaseSchema):

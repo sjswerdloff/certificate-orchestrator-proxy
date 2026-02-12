@@ -103,8 +103,16 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"est_adapter/admin/api/*" = [
+    "B008",    # Depends() in defaults is the standard FastAPI DI pattern
+    "TRY301",  # re-raising as HTTPException in try/except is standard API error handling
+]
+"est_adapter/admin/schemas/*" = [
+    "TRY003",  # descriptive messages in Pydantic validator exceptions are the point
+]
 "tests/*" = [
     "S101",    # assert statements OK in tests
+    "S104",    # binding to all interfaces OK in test settings
     "ARG001",  # unused arguments OK in test fixtures
     "PLR2004", # magic values OK in tests
     "PLC0415", # import inside function - needed for test isolation with mocking

@@ -35,12 +35,10 @@ async def health_check(
         # Initialize repositories
         ca_backend_repo = CABackendRepository(session)
         est_profile_repo = ESTProfileRepository(session)
-        enrollment_event_repo = EnrollmentEventRepository(session)
 
         # Check database connectivity by attempting to count records
         ca_backends_count = await ca_backend_repo.count()
         est_profiles_count = await est_profile_repo.count()
-        enrollment_events_count = await enrollment_event_repo.count()
 
         return HealthResponse(
             status="healthy",
@@ -87,18 +85,18 @@ async def metrics(
         approved_count = await enrollment_event_repo.count_by_status("approved")
         rejected_count = await enrollment_event_repo.count_by_status("rejected")
         error_count = await enrollment_event_repo.count_by_status("error")
-
-        return {
-            "ca_backends": ca_backends_count,
-            "est_profiles": est_profiles_count,
-            "enrollment_events": enrollment_events_count,
-            "enrollment_events_pending": pending_count,
-            "enrollment_events_approved": approved_count,
-            "enrollment_events_rejected": rejected_count,
-            "enrollment_events_error": error_count,
-        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Metrics retrieval failed: {e!s}",
         ) from e
+
+    return {
+        "ca_backends": ca_backends_count,
+        "est_profiles": est_profiles_count,
+        "enrollment_events": enrollment_events_count,
+        "enrollment_events_pending": pending_count,
+        "enrollment_events_approved": approved_count,
+        "enrollment_events_rejected": rejected_count,
+        "enrollment_events_error": error_count,
+    }

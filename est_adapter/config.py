@@ -178,7 +178,7 @@ class AdminAPIConfig(BaseModel):
 
     enabled: bool = True
     port: Annotated[int, Field(ge=1, le=65535)] = 8080
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104
 
 
 class AdminWebConfig(BaseModel):
@@ -188,7 +188,7 @@ class AdminWebConfig(BaseModel):
 
     enabled: bool = True
     port: Annotated[int, Field(ge=1, le=65535)] = 8501
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104
 
 
 class DatabaseConfig(BaseModel):

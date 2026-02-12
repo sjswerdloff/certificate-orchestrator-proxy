@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import (
     JSON,  # SQLite-compatible JSON type
@@ -41,8 +41,8 @@ class ESTProfile(Base):
     description: Mapped[str | None] = mapped_column(Text)
 
     # Relationships
-    ca_backend: Mapped["CABackend"] = relationship("CABackend", back_populates="est_profiles", lazy="joined")  # noqa: F821
-    enrollment_events: Mapped[list["EnrollmentEvent"]] = relationship(  # noqa: F821
+    ca_backend: Mapped[CABackend] = relationship("CABackend", back_populates="est_profiles", lazy="joined")
+    enrollment_events: Mapped[list[EnrollmentEvent]] = relationship(
         "EnrollmentEvent", back_populates="profile", lazy="selectin"
     )
 

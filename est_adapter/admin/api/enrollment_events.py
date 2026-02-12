@@ -169,19 +169,19 @@ async def get_enrollment_stats(
 
         # Get total count
         total_count = await repo.count()
-
-        return {
-            "total": total_count,
-            "pending": pending_count,
-            "approved": approved_count,
-            "rejected": rejected_count,
-            "error": error_count,
-        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve enrollment statistics: {e!s}",
         ) from e
+
+    return {
+        "total": total_count,
+        "pending": pending_count,
+        "approved": approved_count,
+        "rejected": rejected_count,
+        "error": error_count,
+    }
 
 
 @router.get(

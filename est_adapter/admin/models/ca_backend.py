@@ -37,7 +37,7 @@ class CABackend(Base):
     description: Mapped[str | None] = mapped_column(Text)
 
     # Relationships
-    est_profiles: Mapped[list["ESTProfile"]] = relationship("ESTProfile", back_populates="ca_backend", lazy="selectin")  # noqa: F821
+    est_profiles: Mapped[list[ESTProfile]] = relationship("ESTProfile", back_populates="ca_backend", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<CABackend(name='{self.name}', type='{self.type}')>"

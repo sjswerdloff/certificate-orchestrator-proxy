@@ -381,7 +381,7 @@ class TestAdminAPIIntegration:
             },
         )
         assert profile_response.status_code == 201
-        profile_id = profile_response.json()["id"]
+        _profile_id = profile_response.json()["id"]
 
         # Check metrics
         metrics_response = test_client.get("/api/v1/status/metrics")

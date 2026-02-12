@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from est_adapter.admin.models import Base
@@ -26,7 +26,7 @@ def get_async_engine(database_url: str = "sqlite+aiosqlite:///:memory:"):
     Returns:
         Async SQLAlchemy engine
     """
-    global _engine
+    global _engine  # noqa: PLW0603
     if _engine is None:
         _engine = create_async_engine(
             database_url,
@@ -46,7 +46,7 @@ def get_async_session_maker(database_url: str = "sqlite+aiosqlite:///:memory:"):
     Returns:
         Async session maker
     """
-    global _session_maker
+    global _session_maker  # noqa: PLW0603
     if _session_maker is None:
         engine = get_async_engine(database_url)
         _session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

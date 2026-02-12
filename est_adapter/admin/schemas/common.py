@@ -1,8 +1,7 @@
 """Common Pydantic schemas for admin API."""
 
 from datetime import UTC, datetime
-from typing import Any, Generic, TypeVar
-from uuid import UUID
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 

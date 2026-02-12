@@ -1,9 +1,10 @@
 """Pydantic schemas for Enrollment Event admin API."""
 
+import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .common import BaseSchema
 
@@ -71,8 +72,6 @@ class EnrollmentEventBase(BaseSchema):
         if v is None:
             return v
         # Basic validation for IPv4 and IPv6
-        import re
-
         ipv4_pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
         ipv6_pattern = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
 
@@ -84,7 +83,6 @@ class EnrollmentEventBase(BaseSchema):
 class EnrollmentEventCreate(EnrollmentEventBase):
     """Schema for creating a new Enrollment Event."""
 
-    pass
 
 
 class EnrollmentEventResponse(EnrollmentEventBase):
@@ -166,8 +164,6 @@ class EnrollmentEventFilter(BaseSchema):
         if v is None:
             return v
         # Basic validation for IPv4 and IPv6
-        import re
-
         ipv4_pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
         ipv6_pattern = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
 

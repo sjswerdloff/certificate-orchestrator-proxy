@@ -1,12 +1,12 @@
 """Pydantic schemas for admin API."""
 
-from .common import BaseSchema, ErrorResponse, HealthResponse, PaginatedResponse
 from .ca_backend import (
     CABackendBase,
     CABackendCreate,
     CABackendResponse,
     CABackendUpdate,
 )
+from .common import BaseSchema, ErrorResponse, HealthResponse, PaginatedResponse
 from .enrollment_event import (
     EnrollmentEventBase,
     EnrollmentEventCreate,
@@ -21,24 +21,20 @@ from .est_profile import (
 )
 
 __all__ = [
-    # Common schemas
     "BaseSchema",
-    "PaginatedResponse",
-    "ErrorResponse",
-    "HealthResponse",
-    # CA Backend schemas
     "CABackendBase",
     "CABackendCreate",
-    "CABackendUpdate",
     "CABackendResponse",
-    # EST Profile schemas
+    "CABackendUpdate",
     "ESTProfileBase",
     "ESTProfileCreate",
-    "ESTProfileUpdate",
     "ESTProfileResponse",
-    # Enrollment Event schemas
+    "ESTProfileUpdate",
     "EnrollmentEventBase",
     "EnrollmentEventCreate",
-    "EnrollmentEventResponse",
     "EnrollmentEventFilter",
+    "EnrollmentEventResponse",
+    "ErrorResponse",
+    "HealthResponse",
+    "PaginatedResponse",
 ]

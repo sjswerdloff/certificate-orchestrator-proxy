@@ -4,9 +4,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
 from .common import BaseSchema
+
+_MAX_ALLOWED_SUBJECTS = 100
 
 
 class ESTProfileBase(BaseSchema):
@@ -48,7 +50,7 @@ class ESTProfileBase(BaseSchema):
         """Validate that allowed_subjects doesn't exceed maximum length."""
         if v is None:
             return v
-        if len(v) > 100:
+        if len(v) > _MAX_ALLOWED_SUBJECTS:
             raise ValueError("allowed_subjects cannot contain more than 100 entries")
         return v
 
@@ -56,7 +58,6 @@ class ESTProfileBase(BaseSchema):
 class ESTProfileCreate(ESTProfileBase):
     """Schema for creating a new EST Profile."""
 
-    pass
 
 
 class ESTProfileUpdate(BaseSchema):
@@ -98,7 +99,7 @@ class ESTProfileUpdate(BaseSchema):
         """Validate that allowed_subjects doesn't exceed maximum length."""
         if v is None:
             return v
-        if len(v) > 100:
+        if len(v) > _MAX_ALLOWED_SUBJECTS:
             raise ValueError("allowed_subjects cannot contain more than 100 entries")
         return v
 

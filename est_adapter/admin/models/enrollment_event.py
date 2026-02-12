@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,7 +37,7 @@ class EnrollmentEvent(Base):
     correlation_id: Mapped[str | None] = mapped_column(String(255))
 
     # Relationships
-    profile: Mapped["ESTProfile"] = relationship("ESTProfile", back_populates="enrollment_events", lazy="joined")  # noqa: F821
+    profile: Mapped[ESTProfile] = relationship("ESTProfile", back_populates="enrollment_events", lazy="joined")
 
     def __repr__(self) -> str:
         return f"<EnrollmentEvent(profile_id='{self.profile_id}', status='{self.status}')>"

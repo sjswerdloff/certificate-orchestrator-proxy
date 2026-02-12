@@ -61,7 +61,7 @@ def main() -> None:
     """Run the admin server using uvicorn."""
     uvicorn_config: dict[str, str | int | bool | None] = {
         "app": "est_adapter.admin.main:app",
-        "host": "0.0.0.0",
+        "host": "0.0.0.0",  # noqa: S104
         "port": 8000,
         "reload": False,
     }

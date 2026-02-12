@@ -75,7 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.admin.enabled and settings.admin.database.url:
             print(f"[DEBUG] Initializing database with URL: {settings.admin.database.url}")
             await init_database(settings.admin.database.url)
-            print(f"[DEBUG] Database initialized")
+            print("[DEBUG] Database initialized")
 
         yield
 
