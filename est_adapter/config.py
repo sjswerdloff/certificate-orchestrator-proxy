@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import re
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -53,7 +53,7 @@ class CAProvidedConfig(BaseModel):
     key_file: Path
 
 
-class CAMode(str, Enum):
+class CAMode(StrEnum):
     """CA operation mode."""
 
     AUTO_GENERATE = "auto_generate"
@@ -95,7 +95,7 @@ class ClientCertAuthConfig(BaseModel):
     trust_anchors: Path
 
 
-class AuthMethod(str, Enum):
+class AuthMethod(StrEnum):
     """Authentication method."""
 
     BASIC = "basic"
@@ -113,14 +113,14 @@ class AuthConfig(BaseModel):
     client_cert: ClientCertAuthConfig | None = None
 
 
-class KeyType(str, Enum):
+class KeyType(StrEnum):
     """Allowed key types for CSR validation."""
 
     RSA = "RSA"
     EC = "EC"
 
 
-class ECCurve(str, Enum):
+class ECCurve(StrEnum):
     """Allowed elliptic curves for CSR validation."""
 
     SECP256R1 = "secp256r1"
@@ -153,7 +153,7 @@ class ValidationConfig(BaseModel):
         return v
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     """Log levels."""
 
     DEBUG = "DEBUG"
@@ -171,6 +171,47 @@ class AuditConfig(BaseModel):
     log_level: LogLevel = LogLevel.INFO
 
 
+class AdminAPIConfig(BaseModel):
+    """Admin API configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    port: Annotated[int, Field(ge=1, le=65535)] = 8080
+    host: str = "0.0.0.0"  # noqa: S104
+
+
+class AdminWebConfig(BaseModel):
+    """Admin Web UI configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    port: Annotated[int, Field(ge=1, le=65535)] = 8501
+    host: str = "0.0.0.0"  # noqa: S104
+
+
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+
+    model_config = ConfigDict(frozen=True)
+
+    url: str | None = None
+    pool_size: int = 10
+    max_overflow: int = 20
+
+
+class AdminConfig(BaseModel):
+    """Admin configuration (API + Web UI)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = True
+    api: AdminAPIConfig = AdminAPIConfig()
+    web: AdminWebConfig = AdminWebConfig()
+    database: DatabaseConfig = DatabaseConfig()
+
+
 class Settings(BaseModel):
     """Root configuration model for EST Adapter."""
 
@@ -181,6 +222,7 @@ class Settings(BaseModel):
     auth: AuthConfig = AuthConfig()
     validation: ValidationConfig = ValidationConfig()
     audit: AuditConfig = AuditConfig()
+    admin: AdminConfig = AdminConfig()
 
 
 def load_config(config_path: Path | str) -> Settings:

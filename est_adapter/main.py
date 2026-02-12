@@ -13,6 +13,13 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from est_adapter.admin.api.ca_backends import router as ca_backends_router
+from est_adapter.admin.api.enrollment_events import router as enrollment_events_router
+from est_adapter.admin.api.est_profiles import router as est_profiles_router
+from est_adapter.admin.api.status import router as status_router
+
+# Admin API imports
+from est_adapter.admin.database import close_database, init_database
 from est_adapter.audit.logger import (
     configure_audit_logger,
     log_error,
@@ -63,7 +70,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             host=settings.server.host,
             port=settings.server.port,
         )
+
+        # Initialize database if admin is enabled
+        if settings.admin.enabled and settings.admin.database.url:
+            print(f"[DEBUG] Initializing database with URL: {settings.admin.database.url}")
+            await init_database(settings.admin.database.url)
+            print("[DEBUG] Database initialized")
+
         yield
+
+        # Dispose database engine on shutdown to release connection pool
+        if settings.admin.enabled and settings.admin.database.url:
+            await close_database(settings.admin.database.url)
         log_shutdown()
 
     app = FastAPI(
@@ -76,6 +94,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Configure routes with dependencies
     configure_routes(ca_backend, auth_handler, settings)
     app.include_router(router)
+
+    # Add admin API routes if enabled
+    if settings.admin.enabled and settings.admin.api.enabled:
+        app.include_router(ca_backends_router)
+        app.include_router(est_profiles_router)
+        app.include_router(enrollment_events_router)
+        app.include_router(status_router)
 
     # Global exception handler for EST Adapter errors
     @app.exception_handler(ESTAdapterError)
