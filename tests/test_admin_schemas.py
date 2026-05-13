@@ -488,19 +488,19 @@ class TestEnrollmentEventCreate:
             EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", ip_address="999.0.0.1")
         assert "ip_address" in _error_fields(exc_info.value)
 
-    def test_ip_address_abbreviated_ipv6_rejected(self) -> None:
-        """The regex only accepts full 8-group IPv6; abbreviated form (::1) is rejected.
+    def test_ip_address_compressed_ipv6_accepted(self) -> None:
+        """Compressed IPv6 notation is now accepted via stdlib ipaddress validation.
 
-        FINDING: The ip_address validator does NOT accept compressed/abbreviated
-        IPv6 notation (e.g. '::1' for loopback, '2001:db8::1'). The regex requires
-        exactly 8 groups of 1-4 hex digits separated by colons. This means all
-        abbreviated IPv6 addresses used in practice will be rejected.
-        This may be too restrictive for a certificate enrollment gateway that
-        could receive connections from IPv6-only clients using standard notation.
+        The previous regex required exactly 8 colon-separated groups and rejected all
+        abbreviated forms. The validator now uses ipaddress.ip_address() which correctly
+        handles all standard IPv6 compressed notation, including loopback (::1) and
+        prefix-abbreviated forms like 2001:db8::1.
         """
-        with pytest.raises(ValidationError) as exc_info:
-            EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", ip_address="::1")
-        assert "ip_address" in _error_fields(exc_info.value)
+        event = EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", ip_address="::1")
+        assert event.ip_address == "::1"
+
+        event2 = EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", ip_address="2001:db8::1")
+        assert event2.ip_address == "2001:db8::1"
 
     def test_device_id_max_length(self) -> None:
         """Reject device_id over max_length=255."""
