@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Testing/dev
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+results.json
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (keep README.md — hatchling needs it for build)
+!README.md
+ADMIN_API_*.md
+CONCURRENT_WRITE_*.md
+DECISION_SUMMARY.md
+IMPLEMENTATION_QUICK_START.md
+SQLITE_VS_POSTGRESQL.md
+README_ADMIN_API*.md
+docs/
+LICENSE
+
+# Code graph
+code-graph.db/
+
+# Scripts (not needed in image)
+scripts/
+
+# Data directory (mounted at runtime)
+data/
+
+# Config examples (setup script copies the right one)
+config.yaml.example
+test_config.yaml

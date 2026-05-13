@@ -1,0 +1,23 @@
+services:
+  est-adapter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: est-adapter
+    volumes:
+      # Single mount point: all config, certs, db, and logs
+      - ./data:/data
+    ports:
+      # EST server (HTTPS)
+      - "8443:8443"
+      # Admin API
+      - "8080:8080"
+    environment:
+      EST_ADAPTER_CONFIG: /data/est-adapter/config.yaml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
