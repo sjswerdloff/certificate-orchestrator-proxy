@@ -735,24 +735,36 @@ class TestSchemaObservations:
         backend = CABackendCreate(name="  my-ca  ", type="self_signed")
         assert backend.name == "my-ca"
 
-    def test_enrollment_event_user_agent_no_length_limit(self) -> None:
-        """FINDING: user_agent field has no max_length constraint.
+    def test_enrollment_event_user_agent_at_max_length_accepted(self) -> None:
+        """user_agent at exactly max_length=512 is accepted."""
+        ua_512 = "Mozilla/" + "X" * 504
+        assert len(ua_512) == 512
+        event = EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", user_agent=ua_512)
+        assert event.user_agent == ua_512
 
-        In production, User-Agent headers can be arbitrarily long and are a
-        common vector for large-payload injection. For a medical-grade gateway,
-        consider adding max_length to prevent unbounded string storage.
-        This is an observation, not a test failure — the schema accepts it.
-        """
-        very_long_ua = "Mozilla/" + "X" * 10_000
-        event = EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", user_agent=very_long_ua)
-        assert event.user_agent == very_long_ua
+    def test_enrollment_event_user_agent_over_max_length_rejected(self) -> None:
+        """user_agent at 513 chars is rejected with string_too_long error."""
+        ua_513 = "Mozilla/" + "X" * 505
+        assert len(ua_513) == 513
+        with pytest.raises(ValidationError) as exc_info:
+            EnrollmentEventCreate(profile_id=_VALID_UUID, status="pending", user_agent=ua_513)
+        err = exc_info.value
+        assert "user_agent" in _error_fields(err)
+        assert any(e["type"] == "string_too_long" for e in err.errors())
 
-    def test_enrollment_event_error_message_no_length_limit(self) -> None:
-        """FINDING: error_message field has no max_length constraint.
+    def test_enrollment_event_error_message_at_max_length_accepted(self) -> None:
+        """error_message at exactly max_length=4096 is accepted."""
+        msg_4096 = "Error: " + "x" * 4089
+        assert len(msg_4096) == 4096
+        event = EnrollmentEventCreate(profile_id=_VALID_UUID, status="error", error_message=msg_4096)
+        assert event.error_message == msg_4096
 
-        Unbounded error messages could cause large database rows. Consider
-        adding max_length for defensive storage hygiene.
-        """
-        long_msg = "Error: " + "x" * 10_000
-        event = EnrollmentEventCreate(profile_id=_VALID_UUID, status="error", error_message=long_msg)
-        assert event.error_message == long_msg
+    def test_enrollment_event_error_message_over_max_length_rejected(self) -> None:
+        """error_message at 4097 chars is rejected with string_too_long error."""
+        msg_4097 = "Error: " + "x" * 4090
+        assert len(msg_4097) == 4097
+        with pytest.raises(ValidationError) as exc_info:
+            EnrollmentEventCreate(profile_id=_VALID_UUID, status="error", error_message=msg_4097)
+        err = exc_info.value
+        assert "error_message" in _error_fields(err)
+        assert any(e["type"] == "string_too_long" for e in err.errors())

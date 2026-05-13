@@ -35,6 +35,7 @@ class EnrollmentEventBase(BaseSchema):
     error_message: str | None = Field(
         None,
         description="Error message if status is 'error'",
+        max_length=4096,
     )
     ip_address: str | None = Field(
         None,
@@ -44,6 +45,7 @@ class EnrollmentEventBase(BaseSchema):
     user_agent: str | None = Field(
         None,
         description="User agent string from the HTTP request",
+        max_length=512,
     )
     request_id: str | None = Field(
         None,
