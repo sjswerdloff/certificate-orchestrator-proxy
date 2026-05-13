@@ -1,6 +1,6 @@
 """Pydantic schemas for Enrollment Event admin API."""
 
-import re
+import ipaddress
 from datetime import datetime
 from uuid import UUID
 
@@ -35,6 +35,7 @@ class EnrollmentEventBase(BaseSchema):
     error_message: str | None = Field(
         None,
         description="Error message if status is 'error'",
+        max_length=4096,
     )
     ip_address: str | None = Field(
         None,
@@ -44,6 +45,7 @@ class EnrollmentEventBase(BaseSchema):
     user_agent: str | None = Field(
         None,
         description="User agent string from the HTTP request",
+        max_length=512,
     )
     request_id: str | None = Field(
         None,
@@ -68,15 +70,17 @@ class EnrollmentEventBase(BaseSchema):
     @field_validator("ip_address")
     @classmethod
     def validate_ip_address(cls, v: str | None) -> str | None:
-        """Validate IP address format (basic validation)."""
+        """Validate IP address format using stdlib ipaddress module.
+
+        Accepts any valid IPv4 or IPv6 address, including compressed IPv6
+        notation (e.g. '::1', '2001:db8::1', IPv4-mapped '::ffff:192.168.1.1').
+        """
         if v is None:
             return v
-        # Basic validation for IPv4 and IPv6
-        ipv4_pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-        ipv6_pattern = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
-
-        if not (re.match(ipv4_pattern, v) or re.match(ipv6_pattern, v)):
-            raise ValueError("Invalid IP address format")
+        try:
+            ipaddress.ip_address(v)
+        except ValueError:
+            raise ValueError("Invalid IP address format") from None
         return v
 
 
@@ -159,13 +163,15 @@ class EnrollmentEventFilter(BaseSchema):
     @field_validator("ip_address")
     @classmethod
     def validate_ip_address(cls, v: str | None) -> str | None:
-        """Validate IP address format (basic validation)."""
+        """Validate IP address format using stdlib ipaddress module.
+
+        Accepts any valid IPv4 or IPv6 address, including compressed IPv6
+        notation (e.g. '::1', '2001:db8::1', IPv4-mapped '::ffff:192.168.1.1').
+        """
         if v is None:
             return v
-        # Basic validation for IPv4 and IPv6
-        ipv4_pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-        ipv6_pattern = r"^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$"
-
-        if not (re.match(ipv4_pattern, v) or re.match(ipv6_pattern, v)):
-            raise ValueError("Invalid IP address format")
+        try:
+            ipaddress.ip_address(v)
+        except ValueError:
+            raise ValueError("Invalid IP address format") from None
         return v

@@ -110,6 +110,7 @@ class BaseRepository(Generic[ModelType]):
 
         await self.session.flush()
         await self.session.refresh(instance)
+        await self.session.commit()
         return instance
 
     async def delete(self, record_id: UUID) -> bool:
@@ -127,6 +128,7 @@ class BaseRepository(Generic[ModelType]):
 
         await self.session.delete(instance)
         await self.session.flush()
+        await self.session.commit()
         return True
 
     async def count(self, filters: dict[str, Any] | None = None) -> int:

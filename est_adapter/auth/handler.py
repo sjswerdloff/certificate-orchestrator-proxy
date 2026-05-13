@@ -12,6 +12,7 @@ from pathlib import Path
 
 import bcrypt
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 
 from est_adapter.audit.logger import log_auth_attempt
@@ -201,8 +202,11 @@ class ClientCertAuthHandler:
                     _verify_certificate_signature(client_cert, anchor)
                     verified = True
                     break
-                except Exception:  # noqa: S112 - expected: trying multiple anchors
-                    # Signature doesn't match this anchor, try next
+                except (InvalidSignature, ValueError, TypeError):
+                    # InvalidSignature: signature doesn't match this anchor's
+                    # public key. ValueError/TypeError: malformed cert or
+                    # unsupported key type. Try the next anchor.
+                    # Programming errors (e.g. AttributeError) propagate.
                     continue
 
         if not verified:

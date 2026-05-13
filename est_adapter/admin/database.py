@@ -114,12 +114,20 @@ async def get_async_session(database_url: str) -> AsyncGenerator[AsyncSession, N
     created on the fly. Prefer calling init_database() at startup
     instead to catch configuration errors early.
 
+    Callers are responsible for calling ``session.commit()`` after
+    writes; this function does NOT auto-commit on yield. Sessions
+    still roll back on uncaught exceptions and are closed in the
+    ``finally`` block. The same explicit-commit contract is honoured
+    by ``est_adapter/database.py`` — both modules now have consistent
+    semantics so callers cannot be surprised by a silent write loss
+    when switching between them.
+
     Args:
         database_url: SQLAlchemy async database URL.
 
     Yields:
-        AsyncSession: Database session that auto-commits on success
-        and rolls back on exception.
+        AsyncSession: Database session. Commit explicitly after writes;
+        rolls back on uncaught exception.
     """
     if database_url not in _engines:
         _engines[database_url] = create_async_engine(
@@ -139,7 +147,6 @@ async def get_async_session(database_url: str) -> AsyncGenerator[AsyncSession, N
     async with _session_makers[database_url]() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             await session.rollback()
             raise
