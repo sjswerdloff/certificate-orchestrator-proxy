@@ -423,3 +423,156 @@ async def test_session_rolls_back_on_exception() -> None:
         count = result.scalar()
 
     assert count == 0, "Row was committed despite exception — rollback is broken"
+
+
+# ---------------------------------------------------------------------------
+# Tests: admin/database.py — explicit-commit contract (mirrors est_adapter/database.py)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_admin_session_writes_require_explicit_commit_to_persist() -> None:
+    """Documents: writes via admin get_async_session() are NOT committed automatically.
+
+    est_adapter/admin/database.py no longer auto-commits on yield (Fix 2).
+    The contract is now consistent with est_adapter/database.py: callers must
+    call session.commit() explicitly; otherwise writes are silently discarded.
+
+    This test asserts the no-auto-commit behavior: a write in session A is NOT
+    visible in session B unless the caller explicitly commits in session A.
+    """
+    from uuid import uuid4
+
+    from sqlalchemy import text
+
+    from est_adapter.admin.database import close_all_databases
+    from est_adapter.admin.database import get_async_session as admin_get_session
+    from est_adapter.admin.database import init_database as admin_init_database
+
+    url = "sqlite+aiosqlite:///:memory:"
+    await close_all_databases()
+    await admin_init_database(url)
+
+    ca_id = str(uuid4())
+
+    # Write in session A — no explicit commit
+    async for session in admin_get_session(url):
+        await session.execute(
+            text(
+                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
+                " VALUES (:id, :name, :type, :config, 1)"
+            ),
+            {"id": ca_id, "name": "no-commit-admin-ca", "type": "self_signed", "config": "{}"},
+        )
+        # Do NOT call await session.commit() here
+
+    # Read in session B — the row should NOT be visible (no auto-commit)
+    row = None
+    async for session in admin_get_session(url):
+        result = await session.execute(
+            text("SELECT name FROM ca_backends WHERE id = :id"),
+            {"id": ca_id},
+        )
+        row = result.fetchone()
+
+    await close_all_databases()
+
+    assert row is None, (
+        "BUG CONFIRMATION: if this assertion fails, admin get_async_session() now "
+        "auto-commits — update this test to reflect the new contract."
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_session_with_explicit_commit_persists_data() -> None:
+    """With an explicit commit inside the generator, data survives across sessions.
+
+    This mirrors test_session_with_explicit_commit_persists_data for
+    est_adapter/database.py and asserts the positive case for the admin module.
+    """
+    from uuid import uuid4
+
+    from sqlalchemy import text
+
+    from est_adapter.admin.database import close_all_databases
+    from est_adapter.admin.database import get_async_session as admin_get_session
+    from est_adapter.admin.database import init_database as admin_init_database
+
+    url = "sqlite+aiosqlite:///:memory:"
+    await close_all_databases()
+    await admin_init_database(url)
+
+    ca_id = str(uuid4())
+
+    # Write and explicitly commit in session A
+    async for session in admin_get_session(url):
+        await session.execute(
+            text(
+                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
+                " VALUES (:id, :name, :type, :config, 1)"
+            ),
+            {"id": ca_id, "name": "explicit-commit-admin-ca", "type": "self_signed", "config": "{}"},
+        )
+        await session.commit()  # explicit commit
+
+    # Read in session B — now the row IS visible
+    row = None
+    async for session in admin_get_session(url):
+        result = await session.execute(
+            text("SELECT name FROM ca_backends WHERE id = :id"),
+            {"id": ca_id},
+        )
+        row = result.fetchone()
+
+    await close_all_databases()
+
+    assert row is not None
+    assert row[0] == "explicit-commit-admin-ca"
+
+
+@pytest.mark.asyncio
+async def test_admin_session_rolls_back_on_exception() -> None:
+    """admin get_async_session() rolls back on uncaught exception.
+
+    Even without auto-commit, the admin session must roll back partial writes
+    when an exception escapes the generator body — consistent with the
+    rollback behavior required for medical-device certificate management.
+    """
+    from uuid import uuid4
+
+    from sqlalchemy import text
+
+    from est_adapter.admin.database import close_all_databases
+    from est_adapter.admin.database import get_async_session as admin_get_session
+    from est_adapter.admin.database import init_database as admin_init_database
+
+    url = "sqlite+aiosqlite:///:memory:"
+    await close_all_databases()
+    await admin_init_database(url)
+
+    ca_id = str(uuid4())
+
+    try:
+        async for session in admin_get_session(url):
+            await session.execute(
+                text(
+                    "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
+                    " VALUES (:id, :name, :type, :config, 1)"
+                ),
+                {"id": ca_id, "name": "should-not-persist", "type": "self_signed", "config": "{}"},
+            )
+            raise RuntimeError("simulated failure mid-transaction")
+    except RuntimeError:
+        pass  # expected
+
+    count = 0
+    async for session in admin_get_session(url):
+        result = await session.execute(
+            text("SELECT COUNT(*) FROM ca_backends WHERE id = :id"),
+            {"id": ca_id},
+        )
+        count = result.scalar()
+
+    await close_all_databases()
+
+    assert count == 0, "Row was committed despite exception — admin rollback is broken"
