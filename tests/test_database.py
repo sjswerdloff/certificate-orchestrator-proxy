@@ -291,10 +291,7 @@ async def test_session_can_read_data_within_same_session() -> None:
     # Insert and read back in the SAME session scope
     async for session in get_async_session():
         await session.execute(
-            text(
-                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                " VALUES (:id, :name, :type, :config, 1)"
-            ),
+            text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
             {"id": ca_id, "name": "test-ca", "type": "self_signed", "config": "{}"},
         )
         result = await session.execute(
@@ -330,10 +327,7 @@ async def test_session_writes_require_explicit_commit_to_persist() -> None:
     # Write in session A — no explicit commit
     async for session in get_async_session():
         await session.execute(
-            text(
-                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                " VALUES (:id, :name, :type, :config, 1)"
-            ),
+            text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
             {"id": ca_id, "name": "no-commit-ca", "type": "self_signed", "config": "{}"},
         )
         # Do NOT call await session.commit() here
@@ -368,10 +362,7 @@ async def test_session_with_explicit_commit_persists_data() -> None:
     # Write and explicitly commit in session A
     async for session in get_async_session():
         await session.execute(
-            text(
-                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                " VALUES (:id, :name, :type, :config, 1)"
-            ),
+            text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
             {"id": ca_id, "name": "explicit-commit-ca", "type": "self_signed", "config": "{}"},
         )
         await session.commit()  # explicit commit
@@ -457,10 +448,7 @@ async def test_admin_session_writes_require_explicit_commit_to_persist() -> None
     # Write in session A — no explicit commit
     async for session in admin_get_session(url):
         await session.execute(
-            text(
-                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                " VALUES (:id, :name, :type, :config, 1)"
-            ),
+            text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
             {"id": ca_id, "name": "no-commit-admin-ca", "type": "self_signed", "config": "{}"},
         )
         # Do NOT call await session.commit() here
@@ -506,10 +494,7 @@ async def test_admin_session_with_explicit_commit_persists_data() -> None:
     # Write and explicitly commit in session A
     async for session in admin_get_session(url):
         await session.execute(
-            text(
-                "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                " VALUES (:id, :name, :type, :config, 1)"
-            ),
+            text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
             {"id": ca_id, "name": "explicit-commit-admin-ca", "type": "self_signed", "config": "{}"},
         )
         await session.commit()  # explicit commit
@@ -554,10 +539,7 @@ async def test_admin_session_rolls_back_on_exception() -> None:
     try:
         async for session in admin_get_session(url):
             await session.execute(
-                text(
-                    "INSERT INTO ca_backends (id, name, type, config, is_enabled)"
-                    " VALUES (:id, :name, :type, :config, 1)"
-                ),
+                text("INSERT INTO ca_backends (id, name, type, config, is_enabled) VALUES (:id, :name, :type, :config, 1)"),
                 {"id": ca_id, "name": "should-not-persist", "type": "self_signed", "config": "{}"},
             )
             raise RuntimeError("simulated failure mid-transaction")  # noqa: TRY301, TRY003 — test-only raise to exercise rollback path
