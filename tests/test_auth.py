@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
@@ -488,11 +489,10 @@ def wrong_ca_signed_cert(
 def trust_anchor_pem_file(ca_certificate: x509.Certificate) -> Path:
     """Write CA certificate to a temp PEM file and return path."""
     pem_bytes = ca_certificate.public_bytes(serialization.Encoding.PEM)
-    tmp = tempfile.NamedTemporaryFile(suffix=".pem", delete=False)
-    tmp.write(pem_bytes)
-    tmp.flush()
-    tmp.close()
-    return Path(tmp.name)
+    with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
+        tmp.write(pem_bytes)
+        tmp.flush()
+        return Path(tmp.name)
 
 
 @pytest.fixture
@@ -503,11 +503,10 @@ def multi_cert_pem_file(
     """PEM file containing two certificates."""
     pem_bytes = ca_certificate.public_bytes(serialization.Encoding.PEM)
     pem_bytes += ec_ca_certificate.public_bytes(serialization.Encoding.PEM)
-    tmp = tempfile.NamedTemporaryFile(suffix=".pem", delete=False)
-    tmp.write(pem_bytes)
-    tmp.flush()
-    tmp.close()
-    return Path(tmp.name)
+    with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
+        tmp.write(pem_bytes)
+        tmp.flush()
+        return Path(tmp.name)
 
 
 @pytest.fixture
@@ -658,7 +657,7 @@ class TestCombinedAuthHandlerExtended:
     def test_client_cert_method_authenticates_with_valid_cert(
         self,
         client_cert_auth_config: AuthConfig,
-        ca_certificate: x509.Certificate,
+        ca_certificate: x509.Certificate,  # noqa: ARG002 — fixture sets up trust store used by client_cert_auth_config
         client_certificate: x509.Certificate,
     ) -> None:
         """CLIENT_CERT method authenticates a valid client certificate."""
@@ -776,7 +775,7 @@ class TestVerifyCertificateSignature:
 
     def test_rsa_signed_cert_verifies(
         self,
-        ca_key: rsa.RSAPrivateKey,
+        ca_key: rsa.RSAPrivateKey,  # noqa: ARG002 — fixture side-effect: ensures CA key is generated before ca_certificate
         ca_certificate: x509.Certificate,
         client_certificate: x509.Certificate,
     ) -> None:
@@ -799,12 +798,12 @@ class TestVerifyCertificateSignature:
         wrong_ca_signed_cert: x509.Certificate,
     ) -> None:
         """Signature verification raises when signed by a different key."""
-        with pytest.raises(Exception):  # cryptography raises InvalidSignature
+        with pytest.raises(InvalidSignature):
             _verify_certificate_signature(wrong_ca_signed_cert, ca_certificate)
 
     def test_unsupported_key_type_raises_type_error(
         self,
-        ca_certificate: x509.Certificate,
+        ca_certificate: x509.Certificate,  # noqa: ARG002 — fixture provides trust chain context; test uses mock_issuer directly
         client_certificate: x509.Certificate,
     ) -> None:
         """Unsupported public key type raises TypeError with descriptive message."""
@@ -870,9 +869,11 @@ class TestLoadCertificates:
         trust_anchor_pem_file: Path,
     ) -> None:
         """Generic I/O error loading the file raises AuthenticationError."""
-        with patch("pathlib.Path.read_bytes", side_effect=OSError("permission denied")):
-            with pytest.raises(AuthenticationError) as exc_info:
-                _load_certificates(trust_anchor_pem_file)
+        with (
+            patch("pathlib.Path.read_bytes", side_effect=OSError("permission denied")),
+            pytest.raises(AuthenticationError) as exc_info,
+        ):
+            _load_certificates(trust_anchor_pem_file)
 
         assert "Failed to load trust anchors" in str(exc_info.value)
 
@@ -946,10 +947,10 @@ class TestBasicAuthSecurityProperties:
 
     def test_password_with_colon_authenticates_correctly(
         self,
-        test_password_hash: str,
+        test_password_hash: str,  # noqa: ARG002 — fixture ensures bcrypt is warmed up; test hashes its own colon-containing password
     ) -> None:
         """Password containing a colon character is parsed correctly via split(':', 1)."""
-        password_with_colon = "pass:word:with:colons"
+        password_with_colon = "pass:word:with:colons"  # noqa: S105 — test data, not a credential
         import bcrypt
 
         hashed = bcrypt.hashpw(password_with_colon.encode("utf-8"), bcrypt.gensalt(rounds=4)).decode()

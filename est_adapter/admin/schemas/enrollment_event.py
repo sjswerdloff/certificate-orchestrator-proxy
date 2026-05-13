@@ -80,7 +80,7 @@ class EnrollmentEventBase(BaseSchema):
         try:
             ipaddress.ip_address(v)
         except ValueError:
-            raise ValueError("Invalid IP address format")
+            raise ValueError("Invalid IP address format") from None
         return v
 
 
@@ -173,5 +173,5 @@ class EnrollmentEventFilter(BaseSchema):
         try:
             ipaddress.ip_address(v)
         except ValueError:
-            raise ValueError("Invalid IP address format")
+            raise ValueError("Invalid IP address format") from None
         return v

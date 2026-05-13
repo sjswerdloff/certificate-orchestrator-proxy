@@ -22,7 +22,6 @@ from est_adapter.database import (
     init_database,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixture: isolate module-level singleton state between tests
 # ---------------------------------------------------------------------------
@@ -411,7 +410,7 @@ async def test_session_rolls_back_on_exception() -> None:
                     " VALUES ('rollback-test-id', 'should-not-persist', 'self_signed', '{}', 1)"
                 ),
             )
-            raise RuntimeError("simulated failure mid-transaction")
+            raise RuntimeError("simulated failure mid-transaction")  # noqa: TRY301, TRY003 — test-only raise to exercise rollback path
     except RuntimeError:
         pass  # expected
 
@@ -561,7 +560,7 @@ async def test_admin_session_rolls_back_on_exception() -> None:
                 ),
                 {"id": ca_id, "name": "should-not-persist", "type": "self_signed", "config": "{}"},
             )
-            raise RuntimeError("simulated failure mid-transaction")
+            raise RuntimeError("simulated failure mid-transaction")  # noqa: TRY301, TRY003 — test-only raise to exercise rollback path
     except RuntimeError:
         pass  # expected
 
