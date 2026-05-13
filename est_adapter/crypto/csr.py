@@ -66,13 +66,19 @@ def parse_csr(csr_data: bytes | str) -> CSRInfo:
         except Exception as e:
             raise CSRValidationError.invalid_format(reason=str(e)) from e
 
-    # Try parsing as PEM first, then DER
+    # Try parsing as PEM first, then DER, then base64-encoded DER
+    # EST (RFC 7030) sends base64-encoded PKCS#10 as the request body,
+    # which arrives as bytes from request.body().
     csr: x509.CertificateSigningRequest
     try:
         if isinstance(csr_data, bytes) and csr_data.startswith(b"-----BEGIN"):
             csr = x509.load_pem_x509_csr(csr_data)
         else:
-            csr = x509.load_der_x509_csr(csr_data)
+            try:
+                csr = x509.load_der_x509_csr(csr_data)
+            except Exception:
+                # Not raw DER — try base64 decode (EST wire format)
+                csr = x509.load_der_x509_csr(base64.b64decode(csr_data))
     except Exception as e:
         raise CSRValidationError.invalid_format(reason=str(e)) from e
 
