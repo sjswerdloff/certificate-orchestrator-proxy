@@ -47,11 +47,14 @@ class ESTProfileBase(BaseSchema):
     @field_validator("allowed_subjects")
     @classmethod
     def validate_allowed_subjects(cls, v: list[str] | None) -> list[str] | None:
-        """Validate that allowed_subjects doesn't exceed maximum length."""
+        """Validate allowed_subjects entries.
+
+        Length is enforced by Field(max_length=100), which fires before this
+        validator — so the list is guaranteed to have ≤100 entries here.
+        This validator is retained for any additional per-entry checks.
+        """
         if v is None:
             return v
-        if len(v) > _MAX_ALLOWED_SUBJECTS:
-            raise ValueError("allowed_subjects cannot contain more than 100 entries")
         return v
 
 
@@ -95,11 +98,14 @@ class ESTProfileUpdate(BaseSchema):
     @field_validator("allowed_subjects")
     @classmethod
     def validate_allowed_subjects(cls, v: list[str] | None) -> list[str] | None:
-        """Validate that allowed_subjects doesn't exceed maximum length."""
+        """Validate allowed_subjects entries.
+
+        Length is enforced by Field(max_length=100), which fires before this
+        validator — so the list is guaranteed to have ≤100 entries here.
+        This validator is retained for any additional per-entry checks.
+        """
         if v is None:
             return v
-        if len(v) > _MAX_ALLOWED_SUBJECTS:
-            raise ValueError("allowed_subjects cannot contain more than 100 entries")
         return v
 
 

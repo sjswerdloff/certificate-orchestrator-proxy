@@ -280,19 +280,18 @@ class TestESTProfileCreate:
     def test_allowed_subjects_over_limit_rejected(self) -> None:
         """Reject allowed_subjects with more than 100 entries.
 
-        FINDING: The field-level max_length=100 constraint fires before the
-        custom validate_allowed_subjects validator, so the raise ValueError on
-        line 54 is unreachable dead code. Pydantic's built-in list length
-        check catches the violation first. The validator body at lines 53-55
-        (the raise path) will never execute because max_length prevents it.
+        Pydantic's Field(max_length=100) fires before the custom validator,
+        producing a structured too_long error with loc, type, and ctx.max_length.
+        The redundant in-validator length check has been removed; this test
+        asserts the Field constraint is the sole enforcement point.
         """
         subjects = [f"CN=device-{i}" for i in range(101)]
         with pytest.raises(ValidationError) as exc_info:
             ESTProfileCreate(name="p", ca_backend_id=_VALID_UUID, allowed_subjects=subjects)
         err = exc_info.value
         assert "allowed_subjects" in _error_fields(err)
-        # Error comes from the field max_length constraint, not the custom validator
-        assert any("100" in m for m in _error_messages(err))
+        # Error comes from the field max_length constraint (too_long), not a free-text ValueError
+        assert any(e["type"] == "too_long" for e in err.errors())
 
     def test_allowed_subjects_none_accepted(self) -> None:
         """Explicit None for allowed_subjects is valid."""
@@ -334,15 +333,16 @@ class TestESTProfileUpdate:
     def test_allowed_subjects_over_limit_rejected_in_update(self) -> None:
         """allowed_subjects > 100 also rejected in update context.
 
-        FINDING: Same as ESTProfileCreate — the raise ValueError on line 102
-        is unreachable dead code because max_length=100 on the field fires first.
+        Same as ESTProfileCreate — the Field(max_length=100) constraint fires
+        before the custom validator, producing a structured too_long error.
+        The redundant in-validator length check has been removed.
         """
         subjects = [f"CN=device-{i}" for i in range(101)]
         with pytest.raises(ValidationError) as exc_info:
             ESTProfileUpdate(allowed_subjects=subjects)
         err = exc_info.value
         assert "allowed_subjects" in _error_fields(err)
-        assert any("100" in m for m in _error_messages(err))
+        assert any(e["type"] == "too_long" for e in err.errors())
 
     def test_allowed_subjects_none_in_update_accepted(self) -> None:
         """Explicit None for allowed_subjects is valid in update."""
