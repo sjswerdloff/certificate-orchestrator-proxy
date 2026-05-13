@@ -1,0 +1,102 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'scripts/**'
+      - 'est_adapter/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/docker.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'scripts/**'
+      - 'est_adapter/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/docker.yml'
+
+jobs:
+  build-and-smoke-test:
+    name: Build image and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: est-adapter:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Prepare data directory via setup-hackathon.sh
+        run: |
+          # 127.0.0.1 is a valid placeholder IP for CI; the cert SANs will
+          # cover localhost, which is what the healthcheck inside the
+          # container uses.
+          ./scripts/setup-hackathon.sh 127.0.0.1 ./data
+
+      - name: Start container
+        run: |
+          # docker-compose.yml builds locally; swap to the pre-built CI tag
+          # to avoid rebuilding.
+          docker compose up -d --no-build || docker compose up -d
+          docker compose ps
+
+      - name: Wait for container to report healthy
+        run: |
+          # Poll up to 90s for the container's HEALTHCHECK to flip to
+          # "healthy". Surfaces startup crashes and broken health endpoint.
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' est-adapter 2>/dev/null || echo "missing")
+            echo "Attempt $i: health=$status"
+            if [ "$status" = "healthy" ]; then
+              echo "Container reported healthy."
+              exit 0
+            fi
+            if [ "$status" = "missing" ]; then
+              echo "Container is gone."
+              docker compose logs
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "Container did not reach healthy state within 90s."
+          docker compose logs
+          exit 1
+
+      - name: Smoke test EST endpoint reachable
+        run: |
+          # The /health endpoint behind the HEALTHCHECK was already validated
+          # above; this extra step calls a different endpoint to confirm the
+          # EST surface is also live, not just the health probe.
+          curl --fail --insecure --silent --show-error \
+            --max-time 10 \
+            https://localhost:8443/.well-known/est/cacerts \
+            -o /tmp/cacerts.p7 \
+            && echo "EST cacerts endpoint responded" \
+            || (echo "EST endpoint did not respond"; docker compose logs; exit 1)
+
+      - name: Container logs (always)
+        if: always()
+        run: docker compose logs --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
