@@ -80,6 +80,106 @@ Generate a bcrypt password hash:
 python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
 ```
 
+## EST Client
+
+The `est_adapter.client` package provides a Python EST client and a YAML-driven CLI for enrolling devices against any RFC 7030 compliant EST server, including the Kryptonian Gateway with its activation-code bootstrap flow.
+
+### Programmatic Usage
+
+```python
+from est_adapter.client.est_client import ESTClient, KryptonianDeviceIdentity
+
+# Standard EST enrollment with HTTP Basic auth
+with ESTClient(
+    "https://est.example.com",
+    username="device-operator",
+    password="secret",
+) as client:
+    # Retrieve CA certificates
+    ca_certs = client.get_ca_certs()
+
+    # High-level enroll: generates key, builds CSR, submits enrollment
+    result = client.enroll(
+        "linac-01.radonc.hospital.org",
+        key_size=2048,
+        organization="Example Hospital Radiation Oncology",
+        san_dns_names=["linac-01.local"],
+    )
+
+    result.save_certificate_pem("device.cert.pem")
+    result.save_private_key_pem("device.key.pem")
+    print(f"Issued: {result.certificate.subject}")
+```
+
+### Kryptonian Gateway Activation-Code Flow
+
+The Kryptonian Gateway extends EST with a one-time activation-code bootstrap. The admin
+registers a device alias in the gateway, which generates an activation code. The device
+presents that code along with its identity headers during enrollment.
+
+```python
+from est_adapter.client.est_client import ESTClient, KryptonianDeviceIdentity
+
+device_identity = KryptonianDeviceIdentity(
+    activation_code="YOUR_ACTIVATION_CODE_HERE",
+    manufacturer="Varian",
+    model="TrueBeam",
+    serial_number="TB-2024-001",
+)
+
+with ESTClient("https://kryptonian-gateway.example.com") as client:
+    result = client.enroll(
+        "linac-01.radonc.hospital.org",
+        kryptonian_device=device_identity,
+    )
+    result.save_certificate_pem("device.cert.pem")
+    result.save_private_key_pem("device.key.pem")
+```
+
+Internally this adds the headers `X-Activation-Code`, `X-Device-Manufacturer`,
+`X-Device-Model`, and `X-Device-Serial-Number` to the enrollment POST.
+
+### YAML CLI
+
+Copy and edit the example config:
+
+```bash
+cp enrollment.example.yaml enrollment.yaml
+# Edit enrollment.yaml: set server_url, device fields, and kryptonian_activation.activation_code
+```
+
+Then run enrollment:
+
+```bash
+uv run python -m est_adapter.client.enroll_device enrollment.yaml
+# Output files default to ./certs/device.cert.pem and ./certs/device.key.pem
+
+# Specify a different output directory
+uv run python -m est_adapter.client.enroll_device enrollment.yaml --output-dir /etc/est/certs
+```
+
+Minimal `enrollment.yaml` for Kryptonian activation:
+
+```yaml
+server_url: "https://kryptonian-gateway.mangotree-b3d09362.eastus.azurecontainerapps.io"
+
+device:
+  common_name: "linac-01.radonc.hospital.org"
+  manufacturer: "Varian"
+  model: "TrueBeam"
+  serial_number: "TB-2024-001"
+  organization: "Example Hospital Radiation Oncology"
+  key_size: 2048
+
+kryptonian_activation:
+  activation_code: "YOUR_ACTIVATION_CODE_HERE"
+
+timeout: 30.0
+```
+
+See `enrollment.example.yaml` for the full documented configuration format including
+TLS settings and mutual TLS re-enrollment.
+
 ## Development
 
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
