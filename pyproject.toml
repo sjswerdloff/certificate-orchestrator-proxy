@@ -130,7 +130,7 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*", "bcrypt.*"]
+module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*", "bcrypt.*", "httpx.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
