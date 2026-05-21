@@ -44,9 +44,11 @@ htmlcov/
 
 # Secrets and generated data - NEVER COMMIT
 ca_data/
+certs/
 *.key
 *.pem
 config.yaml
+enrollment.yaml
 
 # Logs
 logs/

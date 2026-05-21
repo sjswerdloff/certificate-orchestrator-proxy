@@ -1,0 +1,46 @@
+# EST Device Enrollment Configuration
+#
+# Usage:
+#   uv run python -m est_adapter.client.enroll_device enrollment.yaml
+#   uv run python -m est_adapter.client.enroll_device enrollment.yaml --output-dir ./certs
+
+# EST server URL
+server_url: "https://kryptonian-gateway.mangotree-b3d09362.eastus.azurecontainerapps.io"
+
+# Device identity (populates the CSR and Kryptonian device metadata)
+device:
+  common_name: "linac-01.radonc.hospital.org"
+  manufacturer: "Varian"
+  model: "TrueBeam"
+  serial_number: "TB-2024-001"
+  organization: "Example Hospital Radiation Oncology"
+  key_size: 2048
+  # san_dns_names:
+  #   - "linac-01.local"
+  #   - "linac-01.internal"
+
+# Kryptonian Gateway activation-code enrollment (optional)
+# Omit this section for standard EST enrollment with HTTP Basic or mTLS.
+kryptonian_activation:
+  activation_code: "YOUR_ACTIVATION_CODE_HERE"
+
+# Authentication for standard EST (not needed when using Kryptonian activation)
+# auth:
+#   username: "device-operator"
+#   password: "secret"
+
+# TLS settings
+tls:
+  # Path to CA bundle for server certificate verification.
+  # Omit or set verify: true for system default CA store.
+  # ca_bundle: "/path/to/ca-bundle.pem"
+
+  # Set to false to skip server TLS verification (development only!)
+  # verify: false
+
+  # Client certificate for mutual TLS renewal (after initial enrollment)
+  # client_cert: "./certs/device.cert.pem"
+  # client_key: "./certs/device.key.pem"
+
+# HTTP timeout in seconds
+timeout: 30.0

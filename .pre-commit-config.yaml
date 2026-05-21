@@ -27,5 +27,6 @@ repos:
           - sqlalchemy
           - aiosqlite
           - greenlet
+          - httpx
         args: [--strict]
         exclude: ^tests/
