@@ -271,8 +271,9 @@ class ESTClient:
         san_dns_names: list[str] | None = None,
         organization: str | None = None,
         kryptonian_device: KryptonianDeviceIdentity | None = None,
+        renewal: bool = False,
     ) -> EnrollmentResult:
-        """High-level enrollment: generate key, create CSR, enroll.
+        """High-level enrollment or renewal: generate key, create CSR, enroll.
 
         Convenience method that handles key generation and CSR creation.
 
@@ -283,6 +284,8 @@ class ESTClient:
             organization: Optional organization name for the subject.
             kryptonian_device: Optional Kryptonian Gateway device identity
                 for activation-code enrollment.
+            renewal: If True, use simplereenroll (requires mTLS with
+                existing device certificate for authentication).
 
         Returns:
             EnrollmentResult with certificate and private key.
@@ -311,8 +314,8 @@ class ESTClient:
         # Build extra headers for Kryptonian if provided
         extra_headers = kryptonian_device.to_headers() if kryptonian_device else None
 
-        # Enroll
-        certificate = self.simple_enroll(csr, extra_headers=extra_headers)
+        # Enroll or renew
+        certificate = self.simple_reenroll(csr) if renewal else self.simple_enroll(csr, extra_headers=extra_headers)
 
         # Optionally get CA chain
         ca_chain: list[x509.Certificate] = []

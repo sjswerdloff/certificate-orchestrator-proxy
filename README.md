@@ -180,6 +180,74 @@ timeout: 30.0
 See `enrollment.example.yaml` for the full documented configuration format including
 TLS settings and mutual TLS re-enrollment.
 
+### Certificate Renewal
+
+After a device has been enrolled and holds a valid certificate, subsequent certificate
+requests authenticate via mutual TLS (mTLS) using the existing device certificate rather
+than an activation code. The EST server validates that the presented client certificate
+belongs to a registered active device and then issues a new certificate for the new CSR.
+
+**How renewal is detected:** the CLI automatically enters renewal mode when `tls.client_cert`
+is set in the YAML and no `kryptonian_activation` section is present. No other flag is needed.
+
+#### renewal.example.yaml
+
+```yaml
+server_url: "https://kryptonian-gateway.mangotree-b3d09362.eastus.azurecontainerapps.io"
+
+device:
+  common_name: "linac-01.radonc.hospital.org"
+  organization: "Example Hospital Radiation Oncology"
+  key_size: 2048
+
+# No kryptonian_activation section — renewal uses the existing certificate.
+
+# TLS settings — client cert/key are the CURRENT device credentials
+tls:
+  client_cert: "./certs/device.cert.pem"
+  client_key: "./certs/device.key.pem"
+  # ca_bundle: "/path/to/ca-bundle.pem"
+
+# Set to true if the EST server natively supports the simplereenroll endpoint.
+# Default (false) uses simpleenroll with mTLS, which works with gateways where
+# TLS terminates at a reverse proxy (e.g., Azure Container Apps ingress), because
+# the proxy cannot forward the client certificate to the simplereenroll endpoint.
+# use_reenroll_endpoint: true
+
+timeout: 30.0
+```
+
+#### use_reenroll_endpoint
+
+RFC 7030 defines a dedicated `/simplereenroll` endpoint for renewals. However, many
+deployments place a reverse proxy (e.g., Azure Container Apps, nginx) in front of the
+EST server, and TLS — including the client certificate — terminates at the proxy. The
+proxy forwards the request over plain HTTP or a new TLS session that carries no client
+certificate, so the `simplereenroll` endpoint never sees the device credential and
+cannot authenticate the renewal.
+
+Setting `use_reenroll_endpoint: false` (the default) routes renewal requests through
+`simpleenroll` while still authenticating with the device's existing mTLS certificate
+at the transport layer. This works correctly behind TLS-terminating reverse proxies.
+Set it to `true` only when the EST server receives the raw TCP connection from the
+device (no TLS-terminating proxy between them).
+
+#### Running a renewal
+
+```bash
+cp renewal.example.yaml renewal.yaml
+# Edit renewal.yaml: set server_url, device.common_name, and tls.client_cert/key paths
+
+uv run python -m est_adapter.client.enroll_device renewal.yaml --output-dir ./certs-renewed
+```
+
+After renewal completes, replace the active certificate and key with the new ones:
+
+```bash
+cp ./certs-renewed/device.cert.pem ./certs/device.cert.pem
+cp ./certs-renewed/device.key.pem  ./certs/device.key.pem
+```
+
 ## Development
 
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.

@@ -1,0 +1,33 @@
+# EST Certificate Renewal Configuration
+#
+# Usage:
+#   uv run python -m est_adapter.client.enroll_device renewal.yaml
+#   uv run python -m est_adapter.client.enroll_device renewal.yaml --output-dir ./certs-renewed
+#
+# Renewal authenticates with the device's existing certificate (mTLS)
+# instead of an activation code. The gateway validates the client cert
+# belongs to a registered active device, then signs the new CSR.
+#
+# After renewal, replace the old cert/key files with the new ones.
+
+server_url: "https://kryptonian-gateway.mangotree-b3d09362.eastus.azurecontainerapps.io"
+
+device:
+  common_name: "linac-01.radonc.hospital.org"
+  organization: "Example Hospital Radiation Oncology"
+  key_size: 2048
+
+# No kryptonian_activation section - renewal uses the existing certificate.
+
+# TLS settings - client cert/key are the CURRENT device credentials
+tls:
+  client_cert: "./certs/device.cert.pem"
+  client_key: "./certs/device.key.pem"
+  # ca_bundle: "/path/to/ca-bundle.pem"
+
+# Set to true if the EST server supports the simplereenroll endpoint.
+# Default (false) uses simpleenroll with mTLS, which works with gateways
+# where TLS terminates at a reverse proxy (e.g., Azure Container Apps).
+# use_reenroll_endpoint: true
+
+timeout: 30.0
