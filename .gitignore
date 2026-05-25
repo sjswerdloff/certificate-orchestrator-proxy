@@ -49,6 +49,7 @@ certs/
 *.pem
 config.yaml
 enrollment.yaml
+renewal.yaml
 
 # Logs
 logs/
