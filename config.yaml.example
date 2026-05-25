@@ -9,7 +9,7 @@ server:
     key_file: /path/to/server.key
 
 ca:
-  # Mode: "auto_generate" creates CA on first run, "provided" uses existing CA
+  # Mode: "auto_generate" creates CA on first run, "provided" uses existing CA, "acme" uses ACME protocol
   mode: auto_generate
   auto_generate:
     subject: "CN=EST Adapter CA,O=Healthcare Organization"
@@ -18,6 +18,13 @@ ca:
   provided:
     cert_file: /path/to/ca.crt
     key_file: /path/to/ca.key
+  acme:
+    directory_url: "https://step-ca.example.com/acme/acme/directory"
+    account_email: "admin@example.com"
+    account_storage_path: ./acme_account/
+    ca_cert_file: /path/to/step-ca-root.pem
+    verify_tls: false
+    challenge_port: 80
 
 auth:
   # Method: "basic", "client_cert", or "both"

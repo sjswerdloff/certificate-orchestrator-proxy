@@ -298,6 +298,50 @@ class CABackendError(ESTAdapterError):
             details={"phase": "initialization", "cert_path": path, "reason": reason},
         )
 
+    @classmethod
+    def acme_order_failed(cls, *, reason: str, order_url: str | None = None) -> CABackendError:
+        """Create exception for ACME order failure.
+
+        Args:
+            reason: Why the ACME order failed.
+            order_url: The ACME order URL, if available.
+
+        Returns:
+            CABackendError instance.
+        """
+        details: dict[str, str | None] = {"phase": "acme_order", "reason": reason}
+        if order_url is not None:
+            details["order_url"] = order_url
+        return cls(f"ACME order failed: {reason}", details=details)
+
+    @classmethod
+    def acme_challenge_failed(cls, *, token: str, reason: str) -> CABackendError:
+        """Create exception for ACME challenge failure.
+
+        Args:
+            token: The ACME challenge token.
+            reason: Why the challenge failed.
+
+        Returns:
+            CABackendError instance.
+        """
+        return cls(
+            f"ACME challenge failed for token {token}: {reason}",
+            details={"phase": "acme_challenge", "token": token, "reason": reason},
+        )
+
+    @classmethod
+    def acme_account_error(cls, *, reason: str) -> CABackendError:
+        """Create exception for ACME account errors.
+
+        Args:
+            reason: Why the account operation failed.
+
+        Returns:
+            CABackendError instance.
+        """
+        return cls(f"ACME account error: {reason}", details={"phase": "acme_account", "reason": reason})
+
 
 class ConfigurationError(ESTAdapterError):
     """Configuration error.

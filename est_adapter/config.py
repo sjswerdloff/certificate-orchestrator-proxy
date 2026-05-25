@@ -53,11 +53,33 @@ class CAProvidedConfig(BaseModel):
     key_file: Path
 
 
+class ACMEConfig(BaseModel):
+    """Configuration for ACME (RFC 8555) CA backend.
+
+    Enables certificate issuance through any ACME-compatible CA
+    (e.g., step-ca, Let's Encrypt, EJBCA).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    directory_url: str
+    account_email: str
+    account_storage_path: Path = Path("./acme_account/")
+    ca_cert_file: Path | None = None
+    verify_tls: bool = True
+    challenge_port: Annotated[int, Field(ge=1, le=65535)] = 80
+    order_timeout_seconds: Annotated[int, Field(ge=10, le=600)] = 120
+    poll_interval_seconds: Annotated[float, Field(ge=0.5, le=30.0)] = 2.0
+    eab_kid: str | None = None
+    eab_hmac_key: str | None = None
+
+
 class CAMode(StrEnum):
     """CA operation mode."""
 
     AUTO_GENERATE = "auto_generate"
     PROVIDED = "provided"
+    ACME = "acme"
 
 
 class CAConfig(BaseModel):
@@ -68,6 +90,7 @@ class CAConfig(BaseModel):
     mode: CAMode = CAMode.AUTO_GENERATE
     auto_generate: CAAutoGenerateConfig = CAAutoGenerateConfig()
     provided: CAProvidedConfig | None = None
+    acme: ACMEConfig | None = None
 
 
 class BasicAuthUser(BaseModel):
