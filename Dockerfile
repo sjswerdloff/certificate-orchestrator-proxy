@@ -20,6 +20,11 @@ COPY est_adapter/ est_adapter/
 # Install the project itself
 RUN uv sync --no-dev
 
+# Patch oscrypto 1.3.0 version regex for OpenSSL 3.x (multi-digit versions)
+# TODO(scep-native): remove when pyscep/oscrypto dependency is replaced
+RUN find /app/.venv -path '*/oscrypto/_openssl/_libcrypto_*.py' -exec \
+    sed -i 's/\\d\\.\\d\\.\\d/\\d+\\.\\d+\\.\\d+/g' {} +
+
 
 FROM python:3.13-slim AS runtime
 
