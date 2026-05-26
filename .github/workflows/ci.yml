@@ -122,19 +122,26 @@ jobs:
           # TODO(scep-native): remove this patch when pyscep/oscrypto is replaced
           echo "=== Patching oscrypto version regex for OpenSSL 3.x ==="
           python -c "
-          import oscrypto, os, re
+          import oscrypto, os
           d = os.path.dirname(oscrypto.__file__)
           for name in ['_openssl/_libcrypto_cffi.py', '_openssl/_libcrypto_ctypes.py']:
               path = os.path.join(d, name)
               if os.path.exists(path):
                   txt = open(path).read()
-                  # Fix: \d\.\d\.\d -> \d+\.\d+\.\d+ to match multi-digit version components
-                  patched = txt.replace(r'\d\.\d\.\d', r'\d+\.\d+\.\d+')
-                  if patched != txt:
+                  # The source file has double-escaped backslashes: \\\\d\\\\.\\\\d\\\\.\\\\d
+                  # We need to match that exact string and replace with \\\\d+\\\\.\\\\d+\\\\.\\\\d+
+                  old = r'\\d\\.\\d\\.\\d'
+                  new = r'\\d+\\.\\d+\\.\\d+'
+                  if old in txt:
+                      patched = txt.replace(old, new)
                       open(path, 'w').write(patched)
                       print(f'  Patched: {path}')
                   else:
-                      print(f'  Already OK: {path}')
+                      print(f'  Pattern not found in: {path}')
+                      # Show what the version_match lines actually contain
+                      for i, line in enumerate(txt.splitlines(), 1):
+                          if 'version_match' in line and 'search' in line:
+                              print(f'    Line {i}: {line.strip()}')
           "
 
           # Verify oscrypto can fully load with the patch
