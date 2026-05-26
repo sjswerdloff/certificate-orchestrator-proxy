@@ -1,28 +1,32 @@
 """Certificate Authority backend implementations.
 
-Supports three modes:
+Supports four modes:
 - AUTO_GENERATE: Creates a self-signed CA on first run
 - PROVIDED: Uses externally-provided CA certificate and key
 - ACME: Requests certificates from an external ACME CA (RFC 8555)
+- SCEP: Forwards CSRs to a SCEP-compatible CA (step-ca, ADCS, EJBCA)
 """
 
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
+import uvicorn
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from fastapi import APIRouter
+from fastapi import APIRouter, FastAPI
 from fastapi.responses import PlainTextResponse
 
 from est_adapter.audit.logger import log_ca_initialized, log_certificate_issued
 from est_adapter.ca.acme_client import ACMEClient
-from est_adapter.config import ACMEConfig, CAConfig, CAMode
+from est_adapter.ca.scep_client import SCEPClient
+from est_adapter.config import ACMEConfig, CAConfig, CAMode, SCEPConfig
 from est_adapter.crypto.cert import (
     CertificateSigningKey,
     encode_certificate_pem,
@@ -152,6 +156,7 @@ class ACMECABackend:
         self._ca_cert: x509.Certificate | None = ca_cert
         self._challenge_tokens: dict[str, str] = {}
         self._challenge_lock: threading.Lock = threading.Lock()
+        self._challenge_server_thread: threading.Thread | None = None
 
         # Ensure account storage directory exists
         storage = Path(config.account_storage_path)
@@ -204,11 +209,17 @@ class ACMECABackend:
         Raises:
             CABackendError: On any ACME protocol or network error.
         """
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self._sign_csr_async(csr_info, validity_days, requestor_identity))
-        finally:
-            loop.close()
+
+        def _run_in_thread() -> x509.Certificate:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(self._sign_csr_async(csr_info, validity_days, requestor_identity))
+            finally:
+                loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run_in_thread)
+            return future.result(timeout=self._config.order_timeout_seconds + 30)
 
     def get_ca_certs_pkcs7(self) -> bytes:
         """Return the CA certificate encoded as DER PKCS#7.
@@ -231,28 +242,23 @@ class ACMECABackend:
     def challenge_router(self) -> APIRouter:
         """Return a FastAPI router that serves HTTP-01 ACME challenge responses.
 
-        Mount this router on the application when using ACME mode so that
-        the ACME server can validate domain ownership.
+        Mount this router on the main application so that challenge tokens
+        are also available on the main EST port (useful if the ACME CA can
+        reach the proxy on that port).
 
         Returns:
             APIRouter with a single GET route at
             ``/.well-known/acme-challenge/{token}``.
         """
-        router = APIRouter()
+        return self._build_challenge_router()
 
-        # Capture self in closure so the route handler has access to state.
+    def _build_challenge_router(self) -> APIRouter:
+        """Build a challenge router wired to this backend's token store."""
+        router = APIRouter()
         backend = self
 
         @router.get("/.well-known/acme-challenge/{token}", response_class=PlainTextResponse)
         async def serve_challenge(token: str) -> PlainTextResponse:
-            """Serve the key authorization for an ACME HTTP-01 challenge.
-
-            Args:
-                token: Challenge token from the ACME server.
-
-            Returns:
-                Plain-text key authorization, or 404 if token is unknown.
-            """
             with backend._challenge_lock:  # noqa: SLF001
                 key_auth = backend._challenge_tokens.get(token)  # noqa: SLF001
             if key_auth is None:
@@ -260,6 +266,45 @@ class ACMECABackend:
             return PlainTextResponse(key_auth)
 
         return router
+
+    # ------------------------------------------------------------------
+    # Dedicated HTTP-01 challenge server on port 80
+    # ------------------------------------------------------------------
+
+    def start_challenge_server(self) -> None:
+        """Start a lightweight HTTP server on the challenge port (default 80).
+
+        Runs in a daemon thread so it doesn't block shutdown.
+        The server only serves ``/.well-known/acme-challenge/{token}``
+        responses — no EST endpoints, no auth.
+
+        This is needed because ACME HTTP-01 validation always targets port 80.
+        """
+        if self._challenge_server_thread is not None:
+            return  # Already running
+
+        challenge_app = FastAPI()
+        challenge_app.include_router(self._build_challenge_router())
+
+        config = uvicorn.Config(
+            challenge_app,
+            host="0.0.0.0",  # noqa: S104 — challenge server intentionally binds all interfaces for ACME HTTP-01
+            port=self._config.challenge_port,
+            log_level="warning",
+        )
+        server = uvicorn.Server(config)
+
+        def _run_server() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server.serve())
+
+        self._challenge_server_thread = threading.Thread(
+            target=_run_server,
+            daemon=True,
+            name="acme-challenge-server",
+        )
+        self._challenge_server_thread.start()
 
     # ------------------------------------------------------------------
     # Async ACME workflow
@@ -449,14 +494,172 @@ class ACMECABackend:
         info_path.write_text(json.dumps({"kid": kid}))
 
 
-def create_ca_backend(config: CAConfig) -> SelfSignedCABackend | ACMECABackend:
+class SCEPCABackend:
+    """SCEP CA backend that forwards CSRs to any SCEP-compatible CA.
+
+    Supports step-ca, Microsoft ADCS, EJBCA, and any other RFC 8894
+    compliant SCEP server.  The CA certificate is fetched on first access
+    and then cached.
+
+    Args:
+        config: SCEP configuration block.
+        ca_cert: Optional pre-loaded CA certificate (from ``config.ca_cert_file``).
+    """
+
+    def __init__(
+        self,
+        config: SCEPConfig,
+        ca_cert: x509.Certificate | None = None,
+    ) -> None:
+        """Initialise the SCEP backend.
+
+        Generates an ephemeral RSA key pair for SCEP message signing and
+        stores the (optional) CA certificate supplied at construction time.
+
+        Args:
+            config: SCEPConfig with SCEP URL, challenge password, and TLS options.
+            ca_cert: Pre-loaded CA/intermediate certificate, or None if not yet known.
+        """
+        self._config = config
+        self._ca_cert: x509.Certificate | None = ca_cert
+        self._encryption_cert: x509.Certificate | None = None
+
+        # Generate an ephemeral RSA key for SCEP message signing.
+        # SCEP traditionally requires RSA for the SignedData wrapper.
+        self._signing_key: rsa.RSAPrivateKey = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+
+    # ------------------------------------------------------------------
+    # CABackend Protocol implementation
+    # ------------------------------------------------------------------
+
+    @property
+    def ca_certificate(self) -> x509.Certificate:
+        """Return the cached CA certificate, fetching it first if necessary.
+
+        On first access, also fetches the encryption/RA cert from the SCEP
+        server if one hasn't been discovered yet.
+
+        Returns:
+            The CA/intermediate certificate from the SCEP provisioner.
+
+        Raises:
+            CABackendError: If GetCACert fails and no cert was pre-loaded.
+        """
+        if self._ca_cert is None:
+            self._ca_cert = self._fetch_ca_cert()
+        elif self._encryption_cert is None:
+            # CA cert was pre-loaded from file, but we still need to
+            # discover the encryption cert from the SCEP server.
+            self._fetch_ca_cert()
+        return self._ca_cert
+
+    def sign_csr(
+        self,
+        csr_info: CSRInfo,
+        validity_days: int,  # noqa: ARG002 — SCEP CA sets validity; arg kept for Protocol compat
+        requestor_identity: str,
+    ) -> x509.Certificate:
+        """Enroll a CSR via SCEP and return the issued certificate.
+
+        The SCEP CA determines the actual certificate validity; the
+        ``validity_days`` argument is accepted for Protocol compatibility
+        but is not forwarded to the SCEP CA.
+
+        Args:
+            csr_info: Parsed CSR information.
+            validity_days: Informational; the SCEP CA sets actual validity.
+            requestor_identity: Identity of the requestor for audit logging.
+
+        Returns:
+            Issued X.509 certificate from the SCEP CA.
+
+        Raises:
+            CABackendError: On SCEP protocol error, connection failure,
+                or CA rejection.
+        """
+        ca_cert = self.ca_certificate  # ensures CA cert is fetched
+        csr_der = csr_info.csr.public_bytes(serialization.Encoding.DER)
+
+        ca_cert_path: str | None = None
+        if self._config.ca_cert_file is not None:
+            ca_cert_path = str(self._config.ca_cert_file)
+
+        with SCEPClient(
+            scep_url=self._config.scep_url,
+            verify_tls=self._config.verify_tls,
+            ca_cert_path=ca_cert_path,
+        ) as client:
+            cert = client.enroll(
+                csr_der=csr_der,
+                challenge_password=self._config.challenge_password,
+                ca_cert=ca_cert,
+                signing_key=self._signing_key,
+                encryption_cert=self._encryption_cert,
+            )
+
+        log_certificate_issued(
+            subject=csr_info.subject_dn,
+            serial_number=cert.serial_number,
+            not_before=cert.not_valid_before_utc,
+            not_after=cert.not_valid_after_utc,
+            requestor_identity=requestor_identity,
+        )
+
+        return cert
+
+    def get_ca_certs_pkcs7(self) -> bytes:
+        """Return the CA certificate encoded as DER PKCS#7.
+
+        Returns:
+            DER-encoded PKCS#7 containing the CA certificate.
+
+        Raises:
+            CABackendError: If no CA certificate is available yet.
+        """
+        return encode_pkcs7_certs([self.ca_certificate])
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _fetch_ca_cert(self) -> x509.Certificate:
+        """Fetch the CA certificate from the SCEP GetCACert endpoint.
+
+        Also caches the encryption/RA cert if the server provides a
+        separate RSA decrypter certificate.
+
+        Returns:
+            CA X.509 certificate.
+
+        Raises:
+            CABackendError: On HTTP error or parse failure.
+        """
+        ca_cert_path: str | None = None
+        if self._config.ca_cert_file is not None:
+            ca_cert_path = str(self._config.ca_cert_file)
+
+        with SCEPClient(
+            scep_url=self._config.scep_url,
+            verify_tls=self._config.verify_tls,
+            ca_cert_path=ca_cert_path,
+        ) as client:
+            ca_cert, encryption_cert = client.get_ca_certs()
+            if encryption_cert is not None:
+                self._encryption_cert = encryption_cert
+            return ca_cert
+
+
+def create_ca_backend(config: CAConfig) -> SelfSignedCABackend | ACMECABackend | SCEPCABackend:
     """Create CA backend based on configuration.
 
     Args:
         config: CA configuration.
 
     Returns:
-        Configured CA backend (SelfSignedCABackend or ACMECABackend).
+        Configured CA backend (SelfSignedCABackend, ACMECABackend, or SCEPCABackend).
 
     Raises:
         CABackendError: If CA initialization fails.
@@ -467,6 +670,8 @@ def create_ca_backend(config: CAConfig) -> SelfSignedCABackend | ACMECABackend:
         return _create_provided_backend(config)
     if config.mode == CAMode.ACME:
         return _create_acme_backend(config)
+    if config.mode == CAMode.SCEP:
+        return _create_scep_backend(config)
     # Should never reach here due to enum, but be safe
     msg = f"Unknown CA mode: {config.mode}"
     raise CABackendError(msg)
@@ -604,6 +809,43 @@ def _create_acme_backend(config: CAConfig) -> ACMECABackend:
 
     ca_subject = ca_cert.subject.rfc4514_string() if ca_cert is not None else "(not yet known)"
     log_ca_initialized(mode="acme", ca_subject=ca_subject)
+
+    return backend
+
+
+def _create_scep_backend(config: CAConfig) -> SCEPCABackend:
+    """Create a SCEP CA backend.
+
+    Args:
+        config: Root CA configuration (must have ``config.scep`` set).
+
+    Returns:
+        Configured SCEPCABackend instance.
+
+    Raises:
+        CABackendError: If SCEP configuration is missing or CA cert file cannot be loaded.
+    """
+    if config.scep is None:
+        msg = "SCEP CA mode requires 'scep' configuration"
+        raise CABackendError(msg)
+
+    # Optionally pre-load the CA cert from file
+    ca_cert: x509.Certificate | None = None
+    if config.scep.ca_cert_file is not None:
+        cert_path = Path(config.scep.ca_cert_file)
+        try:
+            cert_data = cert_path.read_bytes()
+            ca_cert = x509.load_pem_x509_certificate(cert_data)
+        except FileNotFoundError:
+            raise CABackendError.not_initialized() from None
+        except Exception as e:
+            msg = f"Failed to load CA certificate from {cert_path}: {e}"
+            raise CABackendError(msg) from e
+
+    backend = SCEPCABackend(config.scep, ca_cert)
+
+    ca_subject = ca_cert.subject.rfc4514_string() if ca_cert is not None else "(will be fetched via GetCACert)"
+    log_ca_initialized(mode="scep", ca_subject=ca_subject)
 
     return backend
 

@@ -70,3 +70,5 @@ EST_Adapter_Handoff_*.md
 EST_Adapter_Research.md
 EST_Adapter_Phase1_Design.md
 Prompt.md
+acme_account/
+test-enrollment.yaml

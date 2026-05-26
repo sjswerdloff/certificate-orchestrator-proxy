@@ -342,6 +342,30 @@ class CABackendError(ESTAdapterError):
         """
         return cls(f"ACME account error: {reason}", details={"phase": "acme_account", "reason": reason})
 
+    @classmethod
+    def scep_enrollment_failed(cls, *, reason: str) -> CABackendError:
+        """Create exception for SCEP enrollment failure.
+
+        Args:
+            reason: Why the SCEP enrollment failed.
+
+        Returns:
+            CABackendError instance.
+        """
+        return cls(f"SCEP enrollment failed: {reason}", details={"phase": "scep_enrollment", "reason": reason})
+
+    @classmethod
+    def scep_connection_error(cls, *, reason: str) -> CABackendError:
+        """Create exception for SCEP connection error.
+
+        Args:
+            reason: Why the connection to the SCEP CA failed.
+
+        Returns:
+            CABackendError instance.
+        """
+        return cls(f"SCEP connection error: {reason}", details={"phase": "scep_connection", "reason": reason})
+
 
 class ConfigurationError(ESTAdapterError):
     """Configuration error.
