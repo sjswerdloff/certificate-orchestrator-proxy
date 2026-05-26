@@ -24,7 +24,7 @@ from est_adapter.audit.logger import (
 # With `from __future__ import annotations`, FastAPI uses get_type_hints() to
 # resolve type strings. Moving these to TYPE_CHECKING would cause NameError.
 from est_adapter.auth.handler import CombinedAuthHandler  # noqa: TC001
-from est_adapter.ca.backend import SelfSignedCABackend  # noqa: TC001
+from est_adapter.ca.backend import CABackend  # noqa: TC001
 from est_adapter.config import Settings  # noqa: TC001
 from est_adapter.crypto.cert import encode_pkcs7_certs_base64
 from est_adapter.crypto.csr import parse_csr
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/.well-known/est")
 class RouteState:
     """Mutable state container for route dependencies."""
 
-    ca_backend: SelfSignedCABackend | None = None
+    ca_backend: CABackend | None = None
     auth_handler: CombinedAuthHandler | None = None
     settings: Settings | None = None
 
@@ -53,7 +53,7 @@ _state = RouteState()
 
 
 def configure_routes(
-    ca_backend: SelfSignedCABackend,
+    ca_backend: CABackend,
     auth_handler: CombinedAuthHandler,
     settings: Settings,
 ) -> None:
@@ -66,7 +66,7 @@ def configure_routes(
     _state.settings = settings
 
 
-def get_ca_backend() -> SelfSignedCABackend:
+def get_ca_backend() -> CABackend:
     """Dependency to get CA backend."""
     if _state.ca_backend is None:
         msg = "CA backend not configured"
@@ -92,7 +92,7 @@ def get_settings() -> Settings:
 
 @router.get("/cacerts")
 async def get_ca_certs(
-    ca_backend: Annotated[SelfSignedCABackend, Depends(get_ca_backend)],
+    ca_backend: Annotated[CABackend, Depends(get_ca_backend)],
 ) -> Response:
     """Get CA certificates in PKCS#7 format.
 
@@ -115,7 +115,7 @@ async def get_ca_certs(
 @router.post("/simpleenroll")
 async def simple_enroll(
     request: Request,
-    ca_backend: Annotated[SelfSignedCABackend, Depends(get_ca_backend)],
+    ca_backend: Annotated[CABackend, Depends(get_ca_backend)],
     auth_handler: Annotated[CombinedAuthHandler, Depends(get_auth_handler)],
     settings: Annotated[Settings, Depends(get_settings)],
     authorization: Annotated[str | None, Header()] = None,
@@ -188,7 +188,7 @@ async def simple_enroll(
 @router.post("/simplereenroll")
 async def simple_reenroll(
     request: Request,
-    ca_backend: Annotated[SelfSignedCABackend, Depends(get_ca_backend)],
+    ca_backend: Annotated[CABackend, Depends(get_ca_backend)],
     auth_handler: Annotated[CombinedAuthHandler, Depends(get_auth_handler)],
     settings: Annotated[Settings, Depends(get_settings)],
     authorization: Annotated[str | None, Header()] = None,

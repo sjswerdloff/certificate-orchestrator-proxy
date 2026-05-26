@@ -27,7 +27,7 @@ from est_adapter.audit.logger import (
     log_startup,
 )
 from est_adapter.auth.handler import CombinedAuthHandler
-from est_adapter.ca.backend import create_ca_backend
+from est_adapter.ca.backend import ACMECABackend, create_ca_backend
 from est_adapter.config import load_config_from_env
 from est_adapter.exceptions import ESTAdapterError
 from est_adapter.routes.est import configure_routes, router
@@ -94,6 +94,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Configure routes with dependencies
     configure_routes(ca_backend, auth_handler, settings)
     app.include_router(router)
+
+    # Include ACME challenge router if using ACME backend
+    if isinstance(ca_backend, ACMECABackend):
+        app.include_router(ca_backend.challenge_router)
 
     # Add admin API routes if enabled
     if settings.admin.enabled and settings.admin.api.enabled:
