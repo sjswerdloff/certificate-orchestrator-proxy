@@ -38,6 +38,18 @@ dependencies = [
     "greenlet>=3.3.1",
     "pytest-asyncio>=1.3.0",
     "httpx>=0.28.0",
+    # --- Temporary SCEP CMS stand-in — see est_adapter/ca/scep_client.py ---
+    # pyscep handles SCEP signed attributes (messageType, transactionID,
+    # senderNonce) that the cryptography library's PKCS7 builder cannot produce.
+    # TODO(scep-native): remove pyscep and its deps once native asn1crypto
+    # CMS construction is implemented in est_adapter/ca/scep_client.py.
+    "pyscep>=0.0.14",   # Temporary SCEP message builder stand-in
+    "asn1crypto>=1.5.1",   # pyscep transitive dep (also useful for native impl)
+    "oscrypto>=1.3.0",   # pyscep transitive dep
+    "csrbuilder>=0.10.0",   # pyscep transitive dep (used in SigningRequest)
+    "certbuilder>=0.14.2",   # pyscep transitive dep (used in SigningRequest)
+    "six>=1.16.0",   # pyscep transitive dep (legacy compat shim used in pyscep)
+    "requests>=2.32.0",   # pyscep transitive dep (pyscep.Client.Client uses requests)
 ]
 
 [project.optional-dependencies]
@@ -113,6 +125,9 @@ ignore = [
 "est_adapter/ca/acme_client.py" = [
     "S501",    # verify=False option is intentional and documented for custom CA bundles
 ]
+"est_adapter/ca/scep_client.py" = [
+    "S501",    # verify=False option is intentional and documented for custom CA bundles
+]
 "tests/*" = [
     "S101",    # assert statements OK in tests
     "S104",    # binding to all interfaces OK in test settings
@@ -145,6 +160,28 @@ ignore = [
     "S105",    # hardcoded token/nonce strings in tests are not passwords
     "S106",    # hardcoded token strings in tests are not passwords
 ]
+"tests/test_scep_client.py" = [
+    "S101",    # assert statements OK in tests
+    "ARG001",  # unused arguments OK in test fixtures
+    "PLR2004", # magic values OK in tests
+    "PLC0415", # import inside function - needed for test isolation with mocking
+    "S505",    # weak crypto keys intentional in tests for speed
+    "TCH",     # type-checking imports less critical in tests
+    "SLF001",  # accessing private members is necessary for unit testing SCEP internals
+    "S105",    # hardcoded challenge password strings in tests are not real secrets
+    "S106",    # hardcoded password strings in tests are not real secrets
+]
+"tests/test_scep_backend.py" = [
+    "S101",    # assert statements OK in tests
+    "ARG001",  # unused arguments OK in test fixtures
+    "PLR2004", # magic values OK in tests
+    "PLC0415", # import inside function - needed for test isolation with mocking
+    "S505",    # weak crypto keys intentional in tests for speed
+    "TCH",     # type-checking imports less critical in tests
+    "SLF001",  # accessing private members is necessary for unit testing SCEPCABackend internals
+    "S105",    # hardcoded challenge password strings in tests are not real secrets
+    "S106",    # hardcoded password strings in tests are not real secrets
+]
 
 [tool.mypy]
 python_version = "3.11"
@@ -157,6 +194,12 @@ check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = ["uvicorn.*", "loguru.*", "cryptography.*", "pytest.*", "bcrypt.*", "httpx.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# pyscep (temporary SCEP CMS stand-in) — untyped; remove when replaced
+# TODO(scep-native): remove this override when pyscep is replaced
+module = ["scep.*", "asn1crypto.*", "oscrypto.*", "csrbuilder.*", "certbuilder.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

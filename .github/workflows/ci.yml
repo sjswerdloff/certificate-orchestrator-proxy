@@ -73,8 +73,71 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install system OpenSSL (for oscrypto)
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev
+
       - name: Install dependencies
         run: uv pip install --system -e ".[dev]"
+
+      - name: Configure oscrypto for OpenSSL 3.x
+        run: |
+          # oscrypto 1.3.0 has known issues detecting OpenSSL 3.x on Ubuntu
+          # (github.com/wbond/oscrypto/issues/78). Diagnose and workaround.
+          echo "=== OpenSSL version ==="
+          openssl version || echo "openssl binary not found"
+
+          echo "=== Searching for libcrypto ==="
+          find /usr/lib /usr/lib64 /lib -name 'libcrypto*' 2>/dev/null || echo "No libcrypto found in standard paths"
+
+          echo "=== Searching via ldconfig ==="
+          ldconfig -p 2>/dev/null | grep libcrypto || echo "ldconfig found no libcrypto"
+
+          echo "=== dpkg libssl files ==="
+          dpkg -L libssl-dev 2>/dev/null | grep libcrypto || echo "No libcrypto in libssl-dev package"
+          dpkg -L libssl3t64 2>/dev/null | grep libcrypto || dpkg -L libssl3 2>/dev/null | grep libcrypto || echo "No libcrypto in libssl3 package"
+
+          # Try multiple search strategies
+          LIBCRYPTO=""
+          # Strategy 1: find .so file (not symlink)
+          LIBCRYPTO=$(find /usr/lib /usr/lib64 /lib -name 'libcrypto.so*' -type f 2>/dev/null | head -1)
+          # Strategy 2: find .so symlink
+          if [ -z "$LIBCRYPTO" ]; then
+            LIBCRYPTO=$(find /usr/lib /usr/lib64 /lib -name 'libcrypto.so*' 2>/dev/null | head -1)
+          fi
+          # Strategy 3: ldconfig
+          if [ -z "$LIBCRYPTO" ]; then
+            LIBCRYPTO=$(ldconfig -p 2>/dev/null | grep 'libcrypto.so ' | awk '{print $NF}' | head -1)
+          fi
+
+          if [ -n "$LIBCRYPTO" ]; then
+            echo "=== Found libcrypto: $LIBCRYPTO ==="
+            echo "OSCRYPTO_USE_OPENSSL=$LIBCRYPTO" >> $GITHUB_ENV
+          else
+            echo "::error::Cannot find libcrypto.so — oscrypto will fail. Install libssl-dev or check OpenSSL installation."
+            exit 1
+          fi
+
+          # Patch oscrypto's broken version regex for OpenSSL 3.x
+          # oscrypto 1.3.0 uses \d\.\d\.\d which fails on versions like 3.0.13
+          # TODO(scep-native): remove this patch when pyscep/oscrypto is replaced
+          echo "=== Patching oscrypto version regex for OpenSSL 3.x ==="
+          # oscrypto 1.3.0 regex \\d\\.\\d\\.\\d fails on multi-digit versions (3.0.13)
+          # Use sed to replace directly — avoids Python string escaping issues
+          OSCRYPTO_DIR=$(python -c "import oscrypto, os; print(os.path.dirname(oscrypto.__file__))")
+          for f in "$OSCRYPTO_DIR/_openssl/_libcrypto_cffi.py" "$OSCRYPTO_DIR/_openssl/_libcrypto_ctypes.py"; do
+            if [ -f "$f" ]; then
+              echo "  Before: $(grep 'version_match.*search' "$f" | head -1 | xargs)"
+              sed -i 's/\\\\d\\\\.\\\\d\\\\.\\\\d/\\\\d+\\\\.\\\\d+\\\\.\\\\d+/g' "$f"
+              echo "  After:  $(grep 'version_match.*search' "$f" | head -1 | xargs)"
+            fi
+          done
+
+          # Verify oscrypto can fully load with the patch
+          echo "=== Verifying oscrypto loads with OpenSSL version detection ==="
+          OSCRYPTO_USE_OPENSSL="$LIBCRYPTO" python -c "
+          from oscrypto._openssl._libcrypto_ctypes import version, version_info
+          print(f'oscrypto detected OpenSSL {version} ({version_info})')
+          " || echo "::error::oscrypto still cannot detect OpenSSL version after patching"
 
       - name: Run tests with coverage
         run: pytest --cov=est_adapter --cov-report=xml --cov-report=term-missing

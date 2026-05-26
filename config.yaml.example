@@ -25,6 +25,17 @@ ca:
     ca_cert_file: /path/to/step-ca-root.pem
     verify_tls: false
     challenge_port: 80
+  scep:
+    # SCEP endpoint URL — step-ca example:  https://ca.example.com/scep/scep
+    # Microsoft ADCS example:               https://adcs.example.com/certsrv/mscep/mscep.dll
+    scep_url: "https://ca.example.com/scep/scep"
+    # Shared challenge password configured on the SCEP provisioner
+    challenge_password: "change-me"
+    # Optional: path to the CA cert PEM for TLS verification and GetCACert pre-load
+    # If omitted, the cert is fetched via GetCACert on first use
+    ca_cert_file: /path/to/ca.pem
+    verify_tls: false
+    timeout_seconds: 60
 
 auth:
   # Method: "basic", "client_cert", or "both"

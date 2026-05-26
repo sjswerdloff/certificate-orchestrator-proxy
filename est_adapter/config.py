@@ -74,12 +74,29 @@ class ACMEConfig(BaseModel):
     eab_hmac_key: str | None = None
 
 
+class SCEPConfig(BaseModel):
+    """Configuration for SCEP (RFC 8894) CA backend.
+
+    Enables certificate issuance through any SCEP-compatible CA
+    (e.g., step-ca, Microsoft ADCS, EJBCA).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    scep_url: str  # e.g., "https://localhost/scep/scep"
+    challenge_password: str  # shared secret configured on the SCEP provisioner
+    ca_cert_file: Path | None = None
+    verify_tls: bool = True
+    timeout_seconds: Annotated[int, Field(ge=1, le=600)] = 60
+
+
 class CAMode(StrEnum):
     """CA operation mode."""
 
     AUTO_GENERATE = "auto_generate"
     PROVIDED = "provided"
     ACME = "acme"
+    SCEP = "scep"
 
 
 class CAConfig(BaseModel):
@@ -91,6 +108,7 @@ class CAConfig(BaseModel):
     auto_generate: CAAutoGenerateConfig = CAAutoGenerateConfig()
     provided: CAProvidedConfig | None = None
     acme: ACMEConfig | None = None
+    scep: SCEPConfig | None = None
 
 
 class BasicAuthUser(BaseModel):

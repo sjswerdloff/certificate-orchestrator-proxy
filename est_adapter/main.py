@@ -95,9 +95,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_routes(ca_backend, auth_handler, settings)
     app.include_router(router)
 
-    # Include ACME challenge router if using ACME backend
+    # Include ACME challenge router and start dedicated challenge server
     if isinstance(ca_backend, ACMECABackend):
         app.include_router(ca_backend.challenge_router)
+        ca_backend.start_challenge_server()
 
     # Add admin API routes if enabled
     if settings.admin.enabled and settings.admin.api.enabled:
