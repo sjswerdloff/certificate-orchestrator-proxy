@@ -65,10 +65,9 @@ async def test_get_async_engine_returns_async_engine() -> None:
 async def test_get_async_engine_default_url_is_in_memory_sqlite() -> None:
     """The default database URL is the SQLite in-memory database."""
     engine = get_async_engine()
-    # The engine URL reflects the configured database
-    url_str = str(engine.url)
-    assert "sqlite" in url_str
-    assert ":memory:" in url_str
+    # Compare URL components, not str(engine.url): SQLAlchemy 2.1 percent-encodes ":" in the rendered string.
+    assert engine.url.get_backend_name() == "sqlite"
+    assert engine.url.database == ":memory:"
 
 
 @pytest.mark.asyncio
